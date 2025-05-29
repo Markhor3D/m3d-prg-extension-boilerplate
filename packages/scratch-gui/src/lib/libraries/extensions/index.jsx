@@ -6,6 +6,8 @@ import poseHandBlocksIconURL from './posenet/pose-hand.png';
 import poseFaceBlocksIconURL from './posenet/pose-face.png';
 import teachableMachineBlocksIconURL from './teachable-machine-blocks/teachable-machine-logo.png';
 import teachableMachineBlocksInsetIconURL from './teachable-machine-blocks/teachable-machine-blocks-small.svg';
+import goCoreIconURL from './goCore/extension-background.png';
+import goCoreInsetIconURL from './goCore/extension-icon.png';
 
 
 import musicIconURL from './music/music.png';
@@ -59,6 +61,14 @@ import gdxforConnectionIconURL from './gdxfor/gdxfor-illustration.svg';
 import gdxforConnectionSmallIconURL from './gdxfor/gdxfor-small.svg';
 
 export default [
+    {
+        name: 'M3D Go',
+        extensionId: 'goCore',
+        iconURL: goCoreIconURL,
+        insetIconURL: goCoreIconURL,
+        description: 'Program M3D go in your Scratch project',
+        featured: true
+    },
     {
         name: (
             <FormattedMessage

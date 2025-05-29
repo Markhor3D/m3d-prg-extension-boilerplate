@@ -2,6 +2,10 @@ const dispatch = require('../dispatch/central-dispatch');
 const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
+// Common Go connection things
+const GoConnection = require('../extensions/goCommon/core.js');
+window.go = new GoConnection();
+
 const BlockType = require('./block-type');
 
 // These extensions are currently built into the VM repository but should not be loaded at startup.
@@ -29,6 +33,7 @@ const builtinExtensions = {
     poseHand: () => require('../extensions/scratch3_pose_hand'),
     poseBody: () => require('../extensions/scratch3_pose_body'),
     avatar: () => require('../extensions/scratch3_avatar'),
+    goCore: () => require('../extensions/goCore')
 
 };
 
