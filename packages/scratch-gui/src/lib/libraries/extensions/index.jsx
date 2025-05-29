@@ -8,6 +8,7 @@ import teachableMachineBlocksIconURL from './teachable-machine-blocks/teachable-
 import teachableMachineBlocksInsetIconURL from './teachable-machine-blocks/teachable-machine-blocks-small.svg';
 import goCoreIconURL from './goCore/extension-background.png';
 import goCoreInsetIconURL from './goCore/extension-icon.png';
+import goCoreSmallIcon from './goCore/m3d-go-small.svg';
 
 
 import musicIconURL from './music/music.png';
@@ -64,10 +65,20 @@ export default [
     {
         name: 'M3D Go',
         extensionId: 'goCore',
+        collaborator: 'M3D',
         iconURL: goCoreIconURL,
-        insetIconURL: goCoreIconURL,
-        description: 'Program M3D go in your Scratch project',
-        featured: true
+        insetIconURL: goCoreInsetIconURL,
+        description: 'Program M3D Go in a Scratch project',
+        featured: true,
+        disabled: false,
+        bluetoothRequired: true,
+        internetConnectionRequired: false,
+        launchPeripheralConnectionFlow: true,
+        useAutoScan: false,
+        connectionIconURL: goCoreSmallIcon,
+        connectionSmallIconURL: goCoreSmallIcon,
+        connectingMessage: 'Message to help people connect to their M3D Go.',
+        helpLink: 'https://community.markhor3d.com'
     },
     {
         name: (
