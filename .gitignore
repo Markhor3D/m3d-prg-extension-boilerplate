@@ -110,3 +110,6 @@ dist
 .venv
 Pipfile
 
+gui
+vm
+build

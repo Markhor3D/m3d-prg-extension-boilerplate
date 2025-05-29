@@ -1,0 +1,8 @@
+{
+  "name": "Scratch Dev",
+  "build": {
+    "dockerfile": "../Dockerfile"
+  },
+  "postCreateCommand": "/workspaces/m3d-prg-extension-boilerplate/entrypoint.sh",
+  "workspaceFolder": "/workspaces/m3d-prg-extension-boilerplate"
+}
