@@ -2,10 +2,6 @@ const dispatch = require('../dispatch/central-dispatch');
 const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
-// Common Go connection things
-const GoConnection = require('../extensions/goCommon/core.js');
-window.go = new GoConnection();
-
 const BlockType = require('./block-type');
 
 // These extensions are currently built into the VM repository but should not be loaded at startup.
@@ -70,7 +66,11 @@ const builtinExtensions = {
  */
 
 class ExtensionManager {
-    constructor (runtime) {
+    constructor (runtime) {        
+        // Common Go connection things
+        const GoConnection = require('../extensions/goCommon/core.js');
+        window.go = new GoConnection(runtime);
+
         /**
          * The ID number to provide to the next extension worker.
          * @type {int}

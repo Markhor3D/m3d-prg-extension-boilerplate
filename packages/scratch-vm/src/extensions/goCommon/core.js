@@ -1,5 +1,7 @@
+
+
 class GoConnection{
-    constructor(){
+    constructor(runtime){
         // ////////////////////////////////////////////////////
         //                 WS connection
         // ////////////////////////////////////////////////////
@@ -48,6 +50,8 @@ class GoConnection{
         
         this.textMessageCharacteristic;
         this.useBytePercent = false;    
+        this._runtime = runtime;
+        this.setConnectionStatus = this.setConnectionStatus.bind(this);
     }
     initWebSocket() {
         console.log('Trying to open a WebSocket connection on: ' + this.wsGateway);
@@ -89,7 +93,6 @@ class GoConnection{
             }
         }
     }
-    
     sendCommand(COMMAND) {
         if (this.lastSentCommand == COMMAND) return true; // example implementation to return a string
     
@@ -232,6 +235,15 @@ class GoConnection{
         // console.log("Received distance: ", floatValue);
         window.go.Sensors[2] = floatValue;
     }
+    setConnectionStatus(connected){
+        this.bleIsConnected = connected;
+        if (connected){ 
+            this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTED);
+        }
+        else {
+            this._runtime.emit(this._runtime.constructor.PERIPHERAL_DISCONNECTED);
+        }
+    }
     endBLE() {
         if (this.bleIsConnected) {
             this.textMessageCharacteristic.gatt.disconnect();
@@ -241,10 +253,9 @@ class GoConnection{
     onDisconnected(event) {
       // Object event.target is Bluetooth Device getting disconnected.
       alert('M3D Go disconnected!');
-      this.bleIsConnected = false;
+      this.setConnectionStatus(false);
     }
     initBLE() {
-        
         console.log("begin");
         console.log("begin");
         console.log("Requesting any Bluetooth Device...");
@@ -321,6 +332,7 @@ class GoConnection{
                                                                             "characteristicvaluechanged",
                                                                             this.distancCharacteristicChangeHandler
                                                                         );
+                                                                        this.setConnectionStatus(true);
                                                                     });
                                                                 });
                                                             });

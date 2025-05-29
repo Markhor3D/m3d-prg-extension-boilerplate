@@ -12,10 +12,22 @@ class M3DGoCore {
         console.log('M3D Go Extension loaded');
         console.log('Version: 2024101801');
 
-        this._extensionId = 'goCore';
+        this.extensionId = 'goCore';
+        runtime.registerPeripheralExtension(this.extensionId, this);
+        //this.toggleConnect();
+    }
+    // Debug function
+    toggleConnect(){        
+        setTimeout(() => {
+            go.bleIsConnected = !go.bleIsConnected;
+            go.setConnectionStatus(go.bleIsConnected);
+            this.toggleConnect(); // toggle after a sec
+        }, 1000);  
     }
     // Scratch peripheral connection:   
-    isConnected () { return go.bleIsConnected; }
+    isConnected () { 
+        return go.bleIsConnected; 
+    }
 
     /**
      * Returns the metadata about your extension.
