@@ -17,6 +17,7 @@ class GoConnection{
         this.lastScreenMsg = "";
         this.lastSentCommand = "";
         this.websocket = [];
+        this.inBLEInit = false;
         
         //////////////////////////////////////////////////////
         //                 BLE connection
@@ -256,8 +257,13 @@ class GoConnection{
       this.setConnectionStatus(false);
     }
     initBLE() {
-        console.log("begin");
-        console.log("begin");
+        console.log("initBLE");
+        if (this.bleIsConnected || this.inBLEInit){
+        console.log("initBLE return");
+            return;
+        }
+        
+        this.inBLEInit = true;
         console.log("Requesting any Bluetooth Device...");
         navigator.bluetooth
             .requestDevice({
@@ -332,7 +338,8 @@ class GoConnection{
                                                                             "characteristicvaluechanged",
                                                                             this.distancCharacteristicChangeHandler
                                                                         );
-                                                                        this.setConnectionStatus(true);
+                                                                        this.setConnectionStatus(true);              
+                                                                        this.inBLEInit = false;
                                                                     });
                                                                 });
                                                             });
@@ -351,7 +358,8 @@ class GoConnection{
                 return Promise.resolve();
             })
             .catch((error) => {
-                console.log("Argh! " + error);
+                console.log("Argh! " + error);                
+                this.inBLEInit = false;
                 alert('Could not connect to the selected M3D Go. Make sure the device is in range and try again.');
             });
     }

@@ -71,7 +71,7 @@ export default [
         description: 'Program M3D Go in a Scratch project',
         featured: true,
         disabled: false,
-        connectingMessage: 'Message to help people connect to their M3D Go.',
+        bluetoothRequired: true,
         helpLink: 'https://community.markhor3d.com'
     },
     {

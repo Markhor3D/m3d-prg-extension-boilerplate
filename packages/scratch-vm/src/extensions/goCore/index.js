@@ -5,15 +5,19 @@ const blockIconURI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYA
 
 var go = window.go;
 
+const EXTENSION_ID = 'goCore';
 class M3DGoCore {
 
     constructor(runtime) {
         // put any setup for your extension here
         console.log('M3D Go Extension loaded');
         console.log('Version: 2024101801');
+        this.runtime = runtime;
 
-        this.extensionId = 'goCore';
-        runtime.registerPeripheralExtension(this.extensionId, this);
+        this.runtime.registerPeripheralExtension(EXTENSION_ID, this);
+        this.runtime.connectPeripheral(EXTENSION_ID, 0);
+        this.runtime.emit(this.runtime.constructor.PERIPHERAL_CONNECTED);
+
         //this.toggleConnect();
     }
     // Debug function
@@ -28,14 +32,27 @@ class M3DGoCore {
     isConnected () { 
         return go.bleIsConnected; 
     }
+    scan(){
+        console.log('Go scan called')
+        //go.initBLE();
+    }
+    disconnect(){
+        console.log('Go disconnect called')
+    }
+    reset () {
+    }
 
+    connect() {
+        console.log('Go connect called')
+        window.go.initBLE();
+    }
     /**
      * Returns the metadata about your extension.
      */
     getInfo() {
         return {
             // unique ID for your extension. GUI still links with this using the variable name in the extensions-manager
-            id: 'goCore',
+            id: EXTENSION_ID,
 
             // name that will be displayed in the Scratch UI
             name: 'M3D Go',
@@ -46,73 +63,11 @@ class M3DGoCore {
 
             // icons to display
             blockIconURI: blockIconURI,
+            menuIconURI: blockIconURI,
             showStatusButton: true,
 
             // your Scratch blocks
             blocks: [{
-                opcode: 'checkConnectedBlock',
-                // type of block - choose from:
-                //   BlockType.REPORTER - returns a value, like "direction"
-                //   BlockType.BOOLEAN - same as REPORTER but returns a true/false value
-                //   BlockType.COMMAND - a normal command block, like "move {} steps"
-                //   BlockType.HAT - starts a stack if its value changes from false to true ("edge triggered")
-                blockType: BlockType.BOOLEAN,
-                text: 'M3D Go is connected',
-                terminal: true,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {// type/shape of the parameter - choose from:
-                    //     ArgumentType.ANGLE - numeric value with an angle picker
-                    //     ArgumentType.BOOLEAN - true/false value
-                    //     ArgumentType.COLOR - numeric value with a colour picker
-                    //     ArgumentType.NUMBER - numeric value
-                    //     ArgumentType.STRING - text value
-                    //     ArgumentType.NOTE - midi music value with a piano picker
-                }
-            }, /*{
-                opcode: 'connectRequestBlock',
-                blockType: BlockType.COMMAND,
-                text: 'Connect M3D Go at [MY_ADDRESS]',
-                terminal: false,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {
-                    MY_ADDRESS: {
-                        defaultValue: '192.168.10.27',
-                        type: ArgumentType.STRING
-                    }
-                }
-            }, */
-            {
-                opcode: 'connectRequestBlockBLE',
-                blockType: BlockType.COMMAND,
-                text: 'Connect M3D Go with Bluetooth',
-                terminal: false,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {
-                }
-            },
-            {
-                opcode: 'disconnectRequestBlockBLE',
-                blockType: BlockType.COMMAND,
-                text: 'Disconnect Bluetooth',
-                terminal: false,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {
-                }
-            },
-            // {
-            //     opcode: 'sendRawCommandBlock',
-            //     blockType: BlockType.COMMAND,
-            //     text: 'Send Command [COMMAND]',
-            //     terminal: false,
-            //     filter: [TargetType.SPRITE, TargetType.STAGE],
-            //     arguments: {
-            //         COMMAND: {
-            //             defaultValue: 'Hello!',
-            //             type: ArgumentType.STRING
-            //         }
-            //     }
-            // },
-            {
                 // name of the function where your block code lives
                 opcode: 'goFwd',
                 blockType: BlockType.COMMAND,
@@ -125,6 +80,22 @@ class M3DGoCore {
                 opcode: 'goBwd',
                 blockType: BlockType.COMMAND,
                 text: 'Go backward',
+                terminal: false,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {}
+            },  {
+                // name of the function where your block code lives
+                opcode: 'rotateCW',
+                blockType: BlockType.COMMAND,
+                text: 'Rotate clockwise',
+                terminal: false,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {}
+            }, {
+                // name of the function where your block code lives
+                opcode: 'rotateCCW',
+                blockType: BlockType.COMMAND,
+                text: 'Rotate counter-clockwise',
                 terminal: false,
                 filter: [TargetType.SPRITE, TargetType.STAGE],
                 arguments: {}
@@ -160,23 +131,7 @@ class M3DGoCore {
                         type: ArgumentType.NUMBER
                     }
                 }
-            }, {
-                // name of the function where your block code lives
-                opcode: 'rotateCW',
-                blockType: BlockType.COMMAND,
-                text: 'Rotate clockwise',
-                terminal: false,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {}
-            }, {
-                // name of the function where your block code lives
-                opcode: 'rotateCCW',
-                blockType: BlockType.COMMAND,
-                text: 'Rotate counter-clockwise',
-                terminal: false,
-                filter: [TargetType.SPRITE, TargetType.STAGE],
-                arguments: {}
-            }, {
+            },{
                 opcode: 'rotateCWAtSpeed',
                 blockType: BlockType.COMMAND,
                 text: 'Rotate clockwise at [POWER]%',
@@ -318,7 +273,70 @@ class M3DGoCore {
                         type: ArgumentType.STRING
                     }
                 }
-            }],
+            }, {
+                opcode: 'checkConnectedBlock',
+                // type of block - choose from:
+                //   BlockType.REPORTER - returns a value, like "direction"
+                //   BlockType.BOOLEAN - same as REPORTER but returns a true/false value
+                //   BlockType.COMMAND - a normal command block, like "move {} steps"
+                //   BlockType.HAT - starts a stack if its value changes from false to true ("edge triggered")
+                blockType: BlockType.BOOLEAN,
+                text: 'M3D Go is connected',
+                terminal: true,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {// type/shape of the parameter - choose from:
+                    //     ArgumentType.ANGLE - numeric value with an angle picker
+                    //     ArgumentType.BOOLEAN - true/false value
+                    //     ArgumentType.COLOR - numeric value with a colour picker
+                    //     ArgumentType.NUMBER - numeric value
+                    //     ArgumentType.STRING - text value
+                    //     ArgumentType.NOTE - midi music value with a piano picker
+                }
+            }, /*{
+                opcode: 'connectRequestBlock',
+                blockType: BlockType.COMMAND,
+                text: 'Connect M3D Go at [MY_ADDRESS]',
+                terminal: false,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {
+                    MY_ADDRESS: {
+                        defaultValue: '192.168.10.27',
+                        type: ArgumentType.STRING
+                    }
+                }
+            }, */
+            {
+                opcode: 'connectRequestBlockBLE',
+                blockType: BlockType.COMMAND,
+                text: 'Connect M3D Go with Bluetooth',
+                terminal: false,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {
+                }
+            },
+            {
+                opcode: 'disconnectRequestBlockBLE',
+                blockType: BlockType.COMMAND,
+                text: 'Disconnect Bluetooth',
+                terminal: false,
+                filter: [TargetType.SPRITE, TargetType.STAGE],
+                arguments: {
+                }
+            }
+            // {
+            //     opcode: 'sendRawCommandBlock',
+            //     blockType: BlockType.COMMAND,
+            //     text: 'Send Command [COMMAND]',
+            //     terminal: false,
+            //     filter: [TargetType.SPRITE, TargetType.STAGE],
+            //     arguments: {
+            //         COMMAND: {
+            //             defaultValue: 'Hello!',
+            //             type: ArgumentType.STRING
+            //         }
+            //     }
+            // },
+            ],
             menus: {
                 expressionsMenu: {
                     items: ["smile", "confused", "frustrated", "funny", "joy", "laugh", "like", "love", "wink", "stuck", "battery"]
