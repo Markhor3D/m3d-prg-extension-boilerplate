@@ -35,11 +35,13 @@ class ConnectionModal extends React.Component {
         this.props.vm.removeListener('PERIPHERAL_REQUEST_ERROR', this.handleError);
     }
     handleScanning () {
+        console.log('Modal handleScanning');
         this.setState({
             phase: PHASES.scanning
         });
     }
     handleConnecting (peripheralId) {
+        console.log('Modal handleConnecting');
         this.props.vm.connectPeripheral(this.props.extensionId, peripheralId);
         this.setState({
             phase: PHASES.connecting
@@ -51,6 +53,7 @@ class ConnectionModal extends React.Component {
         });
     }
     handleDisconnect () {
+        console.log('Modal handleDisconnect');
         try {
             this.props.vm.disconnectPeripheral(this.props.extensionId);
         } finally {
@@ -58,6 +61,7 @@ class ConnectionModal extends React.Component {
         }
     }
     handleCancel () {
+        console.log('Modal handleCancel');
         try {
             // If we're not connected to a peripheral, close the websocket so we stop scanning.
             if (!this.props.vm.getPeripheralIsConnected(this.props.extensionId)) {
@@ -69,11 +73,13 @@ class ConnectionModal extends React.Component {
         }
     }
     handleError () {
+        console.log('Modal handleError');
         // Assume errors that come in during scanning phase are the result of not
         // having scratch-link installed.
-        if (this.state.phase === PHASES.scanning || this.state.phase === PHASES.unavailable) {
+        if (this.state.phase === PHASES.scanning || this.state.phase === PHASES.unavailable || this.state.phase === PHASES.goUnavailable) {
+            console.log('state: ', this.props.extensionId == 'goCore'? PHASES.goUnavailable: PHASES.unavailable);
             this.setState({
-                phase: PHASES.unavailable
+                phase: this.props.extensionId == 'goCore'? PHASES.goUnavailable: PHASES.unavailable
             });
         } else {
             this.setState({
@@ -87,6 +93,7 @@ class ConnectionModal extends React.Component {
         }
     }
     handleConnected () {
+        console.log('Modal handleConnected');
         this.setState({
             phase: PHASES.connected
         });
@@ -97,6 +104,7 @@ class ConnectionModal extends React.Component {
         });
     }
     handleHelp () {
+        console.log('Modal handleHelp');
         window.open(this.state.extension.helpLink, '_blank');
         analytics.event({
             category: 'extensions',
@@ -105,6 +113,8 @@ class ConnectionModal extends React.Component {
         });
     }
     render () {
+        console.log('connection-modal');
+        console.log(this);
         return (
             <ConnectionModalComponent
                 connectingMessage={this.state.extension && this.state.extension.connectingMessage}

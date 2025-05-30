@@ -72,6 +72,11 @@ export default [
         featured: true,
         disabled: false,
         bluetoothRequired: true,
+        internetConnectionRequired: false,
+        launchPeripheralConnectionFlow: true,
+        useAutoScan: false,
+        connectionIconURL: goCoreSmallIcon,
+        connectionSmallIconURL: goCoreSmallIcon,
         helpLink: 'https://community.markhor3d.com'
     },
     {

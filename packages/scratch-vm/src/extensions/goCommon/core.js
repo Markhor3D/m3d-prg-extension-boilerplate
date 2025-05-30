@@ -51,7 +51,8 @@ class GoConnection{
         
         this.textMessageCharacteristic;
         this.useBytePercent = false;    
-        this._runtime = runtime;
+        this._runtime = runtime; 
+        this.runtime = runtime;
         this.setConnectionStatus = this.setConnectionStatus.bind(this);
     }
     initWebSocket() {
@@ -247,14 +248,16 @@ class GoConnection{
     }
     endBLE() {
         if (this.bleIsConnected) {
-            this.textMessageCharacteristic.gatt.disconnect();
-            this.bleIsConnected = false;
+            console.log('endBLE');
+            //this.textMessageCharacteristic.gatt.disconnect();
+            this.setConnectionStatus(false);
+            this.runtime.emit(this.runtime.constructor.PERIPHERAL_DISCONNECTED);
         }
     }
     onDisconnected(event) {
-      // Object event.target is Bluetooth Device getting disconnected.
-      alert('M3D Go disconnected!');
-      this.setConnectionStatus(false);
+        // Object event.target is Bluetooth Device getting disconnected.
+        alert('M3D Go disconnected!');
+        this.runtime.emit(this.runtime.constructor.PERIPHERAL_DISCONNECTED);
     }
     initBLE() {
         console.log("initBLE");
@@ -271,7 +274,6 @@ class GoConnection{
                 filters: [{ services: [this.m3DScratchServiceUUID] }],
             })
             .then((device) => {
-                alert('Connecting, please wait...');
                 console.log("Connecting to GATT Server...");
                 this.textMessageCharacteristic = device;
                 this.textMessageCharacteristic.addEventListener('gattserverdisconnected', this.onDisconnected);
@@ -281,7 +283,6 @@ class GoConnection{
                 // Note that we could also get all services that match a specific UUID by
                 // passing it to getPrimaryServices().
                 console.log("Getting Services...");
-                alert('Almost there...');
                 return server.getPrimaryService(this.m3DScratchServiceUUID);
             })
             .then((service) => {
@@ -338,12 +339,12 @@ class GoConnection{
                                                                             "characteristicvaluechanged",
                                                                             this.distancCharacteristicChangeHandler
                                                                         );
-                                                                        this.setConnectionStatus(true);              
-                                                                        this.inBLEInit = false;
                                                                     });
                                                                 });
                                                             });
-                                                            alert('M3D Go connected!');
+                                                            this.setConnectionStatus(true);      
+                                                            this.runtime.emit(this.runtime.constructor.PERIPHERAL_CONNECTED);
+                                                            this.inBLEInit = false;
                                                         });
                                                     });
                                                 });
@@ -360,7 +361,8 @@ class GoConnection{
             .catch((error) => {
                 console.log("Argh! " + error);                
                 this.inBLEInit = false;
-                alert('Could not connect to the selected M3D Go. Make sure the device is in range and try again.');
+                this.runtime.emit(this.runtime.constructor.PERIPHERAL_REQUEST_ERROR);
+                //alert('Could not connect to the selected M3D Go. Make sure the device is in range and try again.');
             });
     }
     
