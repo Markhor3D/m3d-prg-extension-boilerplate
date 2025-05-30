@@ -39,10 +39,18 @@ class ScanningStep extends React.Component {
     }
     handlePeripheralListUpdate (newList) {
         // TODO: sort peripherals by signal strength? so they don't jump around
-        const peripheralArray = Object.keys(newList).map(id =>
-            newList[id]
-        );
-        this.setState({peripheralList: peripheralArray});
+        if (this.props.extensionId == 'goCore'){
+            var peripheralArray = ['Go Core']
+            return; // No need to do anything because we handle this also in connection-modal that replaces this modal with the connecting one.
+        }
+        else {
+            const peripheralArray = Object.keys(newList).map(id =>
+                newList[id]
+            );
+
+            console.log('Peripheral List Update: ', newList)
+            this.setState({peripheralList: peripheralArray});
+        }
     }
     handleRefresh () {
         this.props.vm.scanForPeripheral(this.props.extensionId);

@@ -25,15 +25,29 @@ class ConnectionModal extends React.Component {
             phase: props.vm.getPeripheralIsConnected(props.extensionId) ?
                 PHASES.connected : PHASES.scanning
         };
+        this.handlePeripheralListUpdate = this.handlePeripheralListUpdate.bind(this);
     }
     componentDidMount () {
         this.props.vm.on('PERIPHERAL_CONNECTED', this.handleConnected);
         this.props.vm.on('PERIPHERAL_REQUEST_ERROR', this.handleError);
+        this.props.vm.on(
+            'PERIPHERAL_LIST_UPDATE', this.handlePeripheralListUpdate);
     }
     componentWillUnmount () {
         this.props.vm.removeListener('PERIPHERAL_CONNECTED', this.handleConnected);
         this.props.vm.removeListener('PERIPHERAL_REQUEST_ERROR', this.handleError);
+        this.props.vm.removeListener(
+            'PERIPHERAL_LIST_UPDATE', this.handlePeripheralListUpdate);
     }
+    // Needed only for go-core.
+    handlePeripheralListUpdate (newList) {
+        if (this.props.extensionId !== 'goCore')
+            return;
+        this.setState({
+            phase: PHASES.connecting
+        });
+    }
+
     handleScanning () {
         console.log('Modal handleScanning');
         this.setState({

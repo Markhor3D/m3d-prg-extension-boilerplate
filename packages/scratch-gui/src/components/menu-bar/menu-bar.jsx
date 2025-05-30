@@ -322,7 +322,7 @@ class MenuBar extends React.Component {
                     <div className={styles.fileGroup}>
                         <a
                             className={classNames(styles.menuBarItem, styles.hoverable)}
-                            href="https://dancingwithai.github.io/?"
+                            href="https://community.markhor3d.com"
                         >
                             ⬅ Back to Curriculum
                         </a>

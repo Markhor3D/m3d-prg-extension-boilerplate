@@ -477,11 +477,6 @@ class Blocks extends React.Component {
     }
     handleConnectionModalStart (extensionId) {
         let prgCustomExtensions = ['teachableMachine', 'poseHand', 'poseFace', 'poseBody'];
-        // if(extensionId == 'goCore'){
-        //     console.log('Connect modal called on go Core');
-        //     this.props.dispatch({ type: 'scratch-gui/modals/OPEN_GOCORE_MODAL' });
-        //     //window.go.initBLE();
-        // } else 
         if (!prgCustomExtensions.includes(extensionId)) {
             this.props.onOpenConnectionModal(extensionId);
         }

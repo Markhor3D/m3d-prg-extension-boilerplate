@@ -77,7 +77,7 @@ export default [
         useAutoScan: false,
         connectionIconURL: goCoreSmallIcon,
         connectionSmallIconURL: goCoreSmallIcon,
-        helpLink: 'https://community.markhor3d.com'
+        helpLink: 'https://community.markhor3d.com/c/design-measure-arts-lab/robotics-technology-math-coding/13'
     },
     {
         name: (

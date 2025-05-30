@@ -54,6 +54,7 @@ class GoConnection{
         this._runtime = runtime; 
         this.runtime = runtime;
         this.setConnectionStatus = this.setConnectionStatus.bind(this);
+        this.onDisconnected = this.onDisconnected.bind(this);
     }
     initWebSocket() {
         console.log('Trying to open a WebSocket connection on: ' + this.wsGateway);
@@ -256,7 +257,7 @@ class GoConnection{
     }
     onDisconnected(event) {
         // Object event.target is Bluetooth Device getting disconnected.
-        alert('M3D Go disconnected!');
+        this.setConnectionStatus(false);
         this.runtime.emit(this.runtime.constructor.PERIPHERAL_DISCONNECTED);
     }
     initBLE() {
@@ -275,6 +276,7 @@ class GoConnection{
             })
             .then((device) => {
                 console.log("Connecting to GATT Server...");
+                this.runtime.emit(this.runtime.constructor.PERIPHERAL_LIST_UPDATE);
                 this.textMessageCharacteristic = device;
                 this.textMessageCharacteristic.addEventListener('gattserverdisconnected', this.onDisconnected);
                 return device.gatt.connect();
@@ -361,6 +363,7 @@ class GoConnection{
             .catch((error) => {
                 console.log("Argh! " + error);                
                 this.inBLEInit = false;
+                this.setConnectionStatus(false);
                 this.runtime.emit(this.runtime.constructor.PERIPHERAL_REQUEST_ERROR);
                 //alert('Could not connect to the selected M3D Go. Make sure the device is in range and try again.');
             });
