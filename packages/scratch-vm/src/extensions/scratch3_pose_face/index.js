@@ -6,6 +6,7 @@ const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Video = require('../../io/video');
+const TargetType = require('../../extension-support/target-type');
 
 function friendlyRound(amount) {
     return Number(amount).toFixed(2);
@@ -485,6 +486,43 @@ class Scratch3PoseNetBlocks {
                 },
                 '---',
                 {
+                    opcode: 'posX',
+                    blockType: BlockType.REPORTER,
+                    text: 'x of [AFFDEX_POINT]',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        AFFDEX_POINT: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "0",
+                            menu: 'AFFDEX_POINT'
+                        },
+                    },
+                },
+                {
+                    opcode: 'posY',
+                    blockType: BlockType.REPORTER,
+                    text: 'y of [AFFDEX_POINT]',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        AFFDEX_POINT: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "0",
+                            menu: 'AFFDEX_POINT'
+                        },
+                    },
+                },
+                {
+                    opcode: 'hasFace',
+                    blockType: BlockType.BOOLEAN,
+                    text: 'see a face',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {},
+                },
+                '---',
+                {
                     opcode: 'affdexWhenExpression',
                     text: 'when [EXPRESSION] detected',
                     blockType: BlockType.HAT,
@@ -836,6 +874,29 @@ class Scratch3PoseNetBlocks {
         const featurePoint = this.affdexState.featurePoints[parseInt(args['AFFDEX_POINT'], 10)];
         const {x, y} = this.affdexCoordsToScratch(featurePoint);
         util.target.setXY(x, y, false);
+    }
+    posX(args, util) {
+        if (!this.affdexState || !this.affdexState.featurePoints) {
+            return 0;
+        }
+        const featurePoint = this.affdexState.featurePoints[parseInt(args['AFFDEX_POINT'], 10)];
+        const {x, y} = this.affdexCoordsToScratch(featurePoint);
+        return x;
+    }
+    posY(args, util) {
+        if (!this.affdexState || !this.affdexState.featurePoints) {
+            return 0;
+        }
+        const featurePoint = this.affdexState.featurePoints[parseInt(args['AFFDEX_POINT'], 10)];
+        const {x, y} = this.affdexCoordsToScratch(featurePoint);
+        return y;
+    }
+    hasFace(args, util) {
+        if (!this.affdexState || !this.affdexState.featurePoints) {
+            return false;
+        }
+        else 
+        return true;
     }
 
     affdexCoordsToScratch({x, y}) {

@@ -7,6 +7,7 @@ const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Video = require('../../io/video');
 
+const TargetType = require('../../extension-support/target-type');
 const posenet = require('@tensorflow-models/posenet');
 
 function friendlyRound(amount) {
@@ -417,6 +418,49 @@ class Scratch3PoseNetBlocks {
                 },
                 '---',
                 {
+                    opcode: 'posX',
+                    text: 'x of [PART]',
+                    blockType: BlockType.REPORTER,
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        PART: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'rightShoulder',
+                            menu: 'PART'
+                        },
+                    },
+                },
+                {
+                    opcode: 'posY',
+                    text: 'y of [PART]',
+                    blockType: BlockType.REPORTER,
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        PART: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'rightShoulder',
+                            menu: 'PART'
+                        },
+                    },
+                },
+                {
+                    opcode: 'hasBody',
+                    text: 'see a body',
+                    blockType: BlockType.BOOLEAN,
+                    isTerminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        PART: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'rightShoulder',
+                            menu: 'PART'
+                        },
+                    },
+                },
+                '---',
+                {
                     opcode: 'videoToggle',
                     text: formatMessage({
                         id: 'videoSensing.videoToggle',
@@ -490,6 +534,25 @@ class Scratch3PoseNetBlocks {
             const {x, y} = this.tfCoordsToScratch(this.poseState.keypoints.find(point => point.part === args['PART']).position);
             util.target.setXY(x, y, false);
         }
+    }
+    posX(args, util) {
+        if (this.hasPose()) {
+            const {x, y} = this.tfCoordsToScratch(this.poseState.keypoints.find(point => point.part === args['PART']).position);
+            return x
+        }
+    }
+    posY(args, util) {
+        if (this.hasPose()) {
+            const {x, y} = this.tfCoordsToScratch(this.poseState.keypoints.find(point => point.part === args['PART']).position);
+            return y;
+        }
+    }
+    hasBody(args, util) {
+        if (this.hasPose()) {
+            return true;
+        }
+        else
+            return false;
     }
 
     hasPose() {

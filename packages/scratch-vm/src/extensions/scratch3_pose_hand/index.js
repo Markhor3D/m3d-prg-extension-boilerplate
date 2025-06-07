@@ -6,6 +6,7 @@ const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 const Video = require('../../io/video');
+const TargetType = require('../../extension-support/target-type');
 
 const handpose = require('@tensorflow-models/handpose');
 
@@ -455,6 +456,52 @@ class Scratch3PoseNetBlocks {
                     }
                 },
                 '---',
+                {
+                    opcode: 'posX',
+                    blockType: BlockType.REPORTER,
+                    text: 'x of [HAND_PART] [HAND_SUB_PART]',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        HAND_PART: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'thumb',
+                            menu: 'HAND_PART'
+                        },
+                        HAND_SUB_PART: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 3,
+                            menu: 'HAND_SUB_PART'
+                        },
+                    },
+                },
+                {
+                    opcode: 'posY',
+                    blockType: BlockType.REPORTER,
+                    text: 'y of [HAND_PART] [HAND_SUB_PART]',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {
+                        HAND_PART: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'thumb',
+                            menu: 'HAND_PART'
+                        },
+                        HAND_SUB_PART: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 3,
+                            menu: 'HAND_SUB_PART'
+                        },
+                    },
+                },
+                {
+                    opcode: 'hasHand',
+                    blockType: BlockType.BOOLEAN,
+                    text: 'see a hand',
+                    terminal: true,
+                    filter: [TargetType.SPRITE, TargetType.STAGE],
+                    arguments: {},
+                },
             ],
             menus: {
                 HAND_PART: {
@@ -499,6 +546,25 @@ class Scratch3PoseNetBlocks {
             const {x: scratchX, y: scratchY} = this.tfCoordsToScratch({x, y, z});
             util.target.setXY(scratchX, scratchY, false);
         }
+    }
+    posX(args, util) {
+        if (this.handPoseState && this.handPoseState.length > 0) {
+            const [x, y, z] = this.handPoseState[0].annotations[args['HAND_PART']][args['HAND_SUB_PART']];
+            const {x: scratchX, y: scratchY} = this.tfCoordsToScratch({x, y, z});
+            return scratchX;
+        }
+        return 0;
+    }
+    posY(args, util) {
+        if (this.handPoseState && this.handPoseState.length > 0) {
+            const [x, y, z] = this.handPoseState[0].annotations[args['HAND_PART']][args['HAND_SUB_PART']];
+            const {x: scratchX, y: scratchY} = this.tfCoordsToScratch({x, y, z});
+            return scratchY;
+        }
+        return 0;
+    }
+    hasHand(args, util){
+        return this.handPoseState && this.handPoseState.length > 0
     }
 
     /**
