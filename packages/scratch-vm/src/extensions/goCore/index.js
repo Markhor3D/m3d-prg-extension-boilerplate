@@ -20,6 +20,10 @@ class M3DGoCore {
         this.runtime.connectPeripheral(EXTENSION_ID, 0);
         this.runtime.emit(this.runtime.constructor.PERIPHERAL_CONNECTED);
 
+        this.stopEmitted = this.stopEmitted.bind(this);
+        this.startEmitted = this.startEmitted.bind(this);
+        runtime.on('PROJECT_STOPPED', this.stopEmitted)
+        runtime.on('PROJECT_START', this.startEmitted);
         //this.toggleConnect();
     }
     // Debug function
@@ -68,7 +72,6 @@ class M3DGoCore {
 
             // colours to use for your extension blocks
             color1: '#c00707',
-            color2: '#fff000',
 
             // icons to display
             blockIconURI: blockIconURI,
@@ -326,6 +329,13 @@ class M3DGoCore {
             },
             '---',
             {
+                opcode: 'stoppressed',
+                text: 'when program stopped',
+                blockType: BlockType.HAT,
+                isTerminal: true,
+                arguments: {}
+            },
+            {
                 opcode: 'checkConnectedBlock',
                 // type of block - choose from:
                 //   BlockType.REPORTER - returns a value, like "direction"
@@ -406,6 +416,19 @@ class M3DGoCore {
      * implementation of the block with the opcode that matches this name
      *  this will be called when the block is used
      */
+    stopEmitted(){
+        console.log('StopEmitted()')
+        this.requestToStop = true; 
+    }
+    startEmitted(){
+        console.log('StartEmitted()')
+        this.requestToStop = false;
+    }
+    stoppressed({}){
+        var stopBkp = this.requestToStop;
+        this.requestToStop = false;
+        return stopBkp;
+    }
     checkConnectedBlock({ }) {
         //console.log("checkConnectedBlock()");
         return go.GoIsConnected();

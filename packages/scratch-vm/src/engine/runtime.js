@@ -2011,6 +2011,8 @@ class Runtime extends EventEmitter {
         }
         // Remove all remaining threads from executing in the next tick.
         this.threads = [];
+        console.log('stopAll called');
+        this.emit('PROJECT_STOPPED'); // 👈 Add this line
     }
 
     /**
