@@ -8,9 +8,6 @@ document.addEventListener("visibilitychange", () => {
     if (document.hidden) pollInterval = 1000; // slower
     else pollInterval = 0; // full 25 fps
 });
-let
- drawCount = 0;
-let lastDraw = Date.now();
 async function getCanvasBasedMJPEGStream(mjpegUrl) {
     drawLoopActive = true;
     const canvas = document.createElement('canvas');
@@ -22,16 +19,26 @@ async function getCanvasBasedMJPEGStream(mjpegUrl) {
     let frameCount = 0;
 
     async function drawLoop() {
-        if (!drawLoopActive)
+        if (!drawLoopActive) {
             return;
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
+        }
 
-        const timestamp = Date.now();
-        img.src = `${mjpegUrl}?t=${timestamp}`; // Prevent caching
+        try {
+            const timestamp = Date.now();
+            const response = await fetch(`${mjpegUrl}?t=${timestamp}`); // Add timestamp to prevent caching
+            const imgBlob = await response.blob();
+            const img = await createImageBitmap(imgBlob); // Use createImageBitmap for better performance with blob images
 
-        img.onload = () => {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            //console.log('img loaded');
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous frame
+            // Flip the image horizontally
+            ctx.save(); // Save the current canvas state
+            ctx.scale(-1, 1); // Flip the canvas horizontally
+
+            // Draw the flipped image: we adjust the destination x position to be negative for flipping
+            ctx.drawImage(img, -canvas.width, 0, canvas.width, canvas.height); // Draw the flipped image
+
+            ctx.restore(); // Restore the original canvas state
             frameCount++;
 
             const now = Date.now();
@@ -41,21 +48,19 @@ async function getCanvasBasedMJPEGStream(mjpegUrl) {
                 frameCount = 0;
             }
 
-            // Pull the next frame only after successful draw
-            setTimeout(drawLoop, pollInterval); // Or add delay if needed
-        };
+            // Pull the next frame only after the current one is drawn
+            setTimeout(drawLoop, 20); // Approx 25fps, adjust if needed
 
-        img.onerror = () => {
-            console.warn("❌ Failed to load frame, retrying...");
+        } catch (err) {
+            console.warn("❌ Failed to load frame, retrying...", err);
             setTimeout(drawLoop, 100); // Retry after delay
-        };
+        }
     }
 
     drawLoop();
 
-    return canvas.captureStream(25);
+    return canvas.captureStream(10);
 }
-
 
 // Single Setup For All Video Streams used by the GUI
 // While VideoProvider uses a private _singleSetup
@@ -65,24 +70,23 @@ async function getCanvasBasedMJPEGStream(mjpegUrl) {
 // does not affect the video on the stage, and a program running and disabling
 // video on the stage will not affect the camera modal's video.
 const requestStack = [];
+
 const requestVideoStream = async videoDesc => {
     let streamPromise;
     if (requestStack.length === 0) {
-         try {
+        try {
             console.log('Trying M3D cam host');
             const res = await fetch("http://localhost:4321/status");
-            console.log('Result: ', res);
             const status = await res.json();
-            console.log('Result.json: ', status);
+            console.log('Result: ', status);
             if (status.server) {
                 const useM3D = confirm("🚀 M3D Camera detected. Use it instead of your webcam?");
                 if (useM3D) {
                     console.log('Use M3D Cam');
                     pollInterval = 0;
 
-                    const stream = await getCanvasBasedMJPEGStream("http://localhost:4321/frame");
+                    const stream = await getCanvasBasedMJPEGStream("http://localhost:4321/frame"); // Use /frame endpoint
                     canvasStream = stream;
-                    // Create virtual stream from your /frame endpoint
                     console.log('Got Stream:', stream);
                     streamPromise = Promise.resolve(stream);
                     requestStack.push(streamPromise);
@@ -90,7 +94,7 @@ const requestVideoStream = async videoDesc => {
                 }
             }
         } catch (e) {
-            // Silent fail — fallback to normal camera
+            console.log('No M3D Cam, reverting to system cam');
         }
 
         streamPromise = getUserMedia({

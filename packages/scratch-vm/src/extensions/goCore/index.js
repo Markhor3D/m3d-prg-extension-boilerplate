@@ -13,7 +13,7 @@ class M3DGoCore {
     constructor(runtime) {
         // put any setup for your extension here
         console.log('M3D Go Extension loaded');
-        console.log('Version: 2024101801');
+        console.log('Version: 2025061002');
         this.runtime = runtime;
 
         this.runtime.registerPeripheralExtension(EXTENSION_ID, this);

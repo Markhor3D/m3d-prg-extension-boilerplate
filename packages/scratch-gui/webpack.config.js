@@ -148,7 +148,7 @@ module.exports = [
             new HtmlWebpackPlugin({
                 chunks: ['lib.min', 'gui'],
                 template: 'src/playground/index.ejs',
-                title: 'PRG AI Blocks',
+                title: 'M3D Scratch',
                 sentryConfig: process.env.SENTRY_CONFIG ? '"' + process.env.SENTRY_CONFIG + '"' : null
             }),
             new HtmlWebpackPlugin({
@@ -176,6 +176,10 @@ module.exports = [
             new CopyWebpackPlugin([{
                 from: 'node_modules/scratch-blocks/media',
                 to: 'static/blocks-media'
+            }]),
+            new CopyWebpackPlugin([{
+                from: 'src/playground/m3dloader.js',
+                to: 'm3dloader.js'
             }]),
             new CopyWebpackPlugin([{
                 from: 'extensions/**',
