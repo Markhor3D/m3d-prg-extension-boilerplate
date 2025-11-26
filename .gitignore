@@ -114,3 +114,4 @@ gui
 vm
 build
 packages/scratch-gui/src/containers/m3d-prg-extension-boilerplate.code-workspace
+packages/scratch-vm/package-lock.json
