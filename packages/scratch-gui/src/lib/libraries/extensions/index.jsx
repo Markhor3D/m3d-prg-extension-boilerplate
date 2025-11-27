@@ -6,9 +6,14 @@ import poseHandBlocksIconURL from './posenet/pose-hand.png';
 import poseFaceBlocksIconURL from './posenet/pose-face.png';
 import teachableMachineBlocksIconURL from './teachable-machine-blocks/teachable-machine-logo.png';
 import teachableMachineBlocksInsetIconURL from './teachable-machine-blocks/teachable-machine-blocks-small.svg';
+
 import goCoreIconURL from './goCore/extension-background.png';
 import goCoreInsetIconURL from './goCore/extension-icon.png';
 import goCoreSmallIcon from './goCore/m3d-go-small.png';
+
+import whisperIconURL from './whisper/extension-background.png';
+import whisperInsetIconURL from './whisper/extension-icon.png';
+import whisperSmallIcon from './whisper/whisper-small.png';
 
 
 import musicIconURL from './music/music.png';
@@ -98,6 +103,22 @@ export default [
             />
         ),
         featured: true
+    },{
+        name: 'M3D Whisper',
+        extensionId: 'whisper',
+        collaborator: 'M3D',
+        iconURL: whisperIconURL,
+        insetIconURL: whisperInsetIconURL,
+        description: 'A chat engine for scratch projects over the internet',
+        featured: true,
+        disabled: false,
+        bluetoothRequired: false,
+        internetConnectionRequired: true,
+        launchPeripheralConnectionFlow: true,
+        useAutoScan: false,
+        connectionIconURL: whisperSmallIcon,
+        connectionSmallIconURL: whisperSmallIcon,
+        helpLink: 'https://community.markhor3d.com/c/design-measure-arts-lab/robotics-technology-math-coding/13'
     },
     {
         name: (
