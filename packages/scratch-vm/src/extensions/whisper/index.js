@@ -184,9 +184,6 @@ class M3DWhisper {
         // 1. Fire a generic event for ANY incoming message (for 'hasWhispers' logic)
         this.runtime.emit('EVENT_M3D_WHISPER_RECEIVED');
 
-        // 2. Fire a specific event with the sender's username (for 'heard a whisper from []' HAT block)
-        this.runtime.emit('EVENT_M3D_WHISPER_FROM', data.fromUser);
-
         console.log(`M3D Whisper (Rx): User-to-user message queued. From: ${data.fromUser}, Msg: "${data.message}"`);
     }
     
@@ -239,7 +236,7 @@ class M3DWhisper {
                 // --- Event Block ---
                 {
                     opcode: 'whenHeardWhisper',
-                    blockType: BlockType.EVENT, // Starting block type
+                    blockType: BlockType.HAT, // Starting block type
                     text: formatMessage({
                         id: 'whisper.whenHeard',
                         default: 'when heard a whisper from [SENDER_USER]',
@@ -250,50 +247,9 @@ class M3DWhisper {
                             type: ArgumentType.STRING,
                             menu: 'usersMenu' // Dynamic menu for usernames
                         }
-                    },
-                    filter: 'EVENT_M3D_WHISPER_FROM' 
-                },
-                '---',
-                {
-                    opcode: 'setUsername',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'whisper.setUsername',
-                        default: 'set name to [USERNAME]',
-                        description: 'Sets the local username before joining a circle.'
-                    }),
-                    arguments: {
-                        USERNAME: {
-                            type: ArgumentType.STRING,
-                            defaultValue: 'bot-1'
-                        }
                     }
                 },
                 '---',
-                {
-                    opcode: 'createWhisperCircle',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'whisper.create',
-                        default: 'create whisper circle',
-                        description: 'Creates a new chat room and joins it. Stores deletion code internally.'
-                    })
-                },
-                {
-                    opcode: 'joinCircle',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'whisper.join',
-                        default: 'join circle [ROOM_ID]',
-                        description: 'Joins an existing chat room.'
-                    }),
-                    arguments: {
-                        ROOM_ID: {
-                            type: ArgumentType.STRING,
-                            defaultValue: 'ABC123'
-                        }
-                    }
-                },
                 {
                     opcode: 'getRoomID',
                     blockType: BlockType.REPORTER,
@@ -343,6 +299,21 @@ class M3DWhisper {
                     })
                 },
                 {
+                    opcode: 'hasWhispersFrom',
+                    blockType: BlockType.BOOLEAN,
+                    text: formatMessage({
+                        id: 'whisper.hasWhispersfrom',
+                        default: 'whisper waiting from [SENDER_USER]?',
+                        description: 'Returns true if there are unread whispers in the queue (excluding admin messages).'
+                    }),
+                    arguments: {
+                        SENDER_USER: {
+                            type: ArgumentType.STRING,
+                            menu: 'usersMenu' // Dynamic menu for usernames
+                        }
+                    }
+                },
+                {
                     opcode: 'getWhisperedMessage',
                     blockType: BlockType.REPORTER,
                     text: formatMessage({
@@ -355,27 +326,9 @@ class M3DWhisper {
                             type: ArgumentType.STRING,
                             menu: 'usersMenu' // Dynamic menu for usernames
                         }
-                    }
+                    },
+                    disableMonitor: true
                 },
-                '---',
-                {
-                    opcode: 'leaveCircle',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'whisper.leave',
-                        default: 'leave circle',
-                        description: 'Leaves the currently joined chat room.'
-                    })
-                },
-                {
-                    opcode: 'deleteCreatedCircle',
-                    blockType: BlockType.COMMAND,
-                    text: formatMessage({
-                        id: 'whisper.delete',
-                        default: 'delete created circle',
-                        description: 'Deletes the room if this bot created it and has the deletion code.'
-                    })
-                }
             ],
 
             menus: {
@@ -452,7 +405,8 @@ class M3DWhisper {
     disconnect() {
         console.log('M3D Whisper: Disconnect called by VM (via status icon). Leaving circle...');
         // Use our core logic to leave the room, clear state, and update status
-        return this.leaveCircle(); 
+        this._clearRoomState();
+        return true; 
     }
     
     /**
@@ -608,71 +562,29 @@ class M3DWhisper {
     // ------------------------------------------------------------------
     // BLOCK IMPLEMENTATION - COMMANDS
     // ------------------------------------------------------------------
+    /**
+     * Hat block implementation for 'when heard a whisper from [SENDER_USER]'.
+     * Fires continuously as long as a matching message exists in the queue.
+     * Stops firing once the message is retrieved by getWhisperedMessage.
+     * @param {object} args - Block arguments.
+     * @returns {boolean} True if a message is waiting, false otherwise.
+     */
+    whenHeardWhisper(args) {
+        const user = Cast.toString(args.SENDER_USER).trim();
 
-    setUsername(args) {
-        this.username = Cast.toString(args.USERNAME).trim();
-        if (this.username) {
-            console.log(`M3D Whisper: Local username set to: ${this.username}`);
-        } else {
-            console.error("M3D Whisper: Username cannot be empty.");
+        // 1. Check for any messages in the queue
+        if (!this.messageQueue || this.messageQueue.length === 0) {
+            return false;
         }
+
+        // 2. If the user argument is empty, any message will trigger the block.
+        if (!user) {
+            return true;
+        } 
+        
+        // 3. If a specific user is selected, check if a message from that user exists.
+        return this.messageQueue.some(msg => msg.from === user);
     }
-
-    async createWhisperCircle() {
-        // Check if already connected via the peripheral flow
-        if (this.peripheralId) {
-             console.warn("M3D Whisper: Already connected via peripheral flow. Use peripheral disconnect/connect.");
-             return;
-        }
-
-        await this.beginSocketIO();
-        
-        if (!this.username) {
-            console.error("M3D Whisper: Please set a username before creating a circle.");
-            return;
-        }
-        
-        return new Promise(resolve => {
-            this.socket.emit('create_room', (response) => {
-                if (response.status === 'ok') {
-                    this.roomId = response.roomId;
-                    this.deleteCode = response.deleteCode;
-                    console.log(`M3D Whisper: New Circle Created. ID: ${this.roomId}, Deletion Code: ${this.deleteCode} (KEEP SECRET!)`);
-                    
-                    // Automatically join the newly created room
-                    this._joinRoomInternal(this.roomId, this.username).then(() => {
-                        // Notify user about the room ID they need to share
-                        this.runtime.emit('EVENT_M3D_WHISPER_INFO', `Circle ID: ${this.roomId}`);
-                        resolve();
-                    });
-                } else {
-                    console.error("M3D Whisper: Failed to create circle.", response.message);
-                    resolve();
-                }
-            });
-        });
-    }
-
-    async joinCircle(args) {
-        // Check if already connected via the peripheral flow
-        if (this.peripheralId) {
-             console.warn("M3D Whisper: Already connected via peripheral flow. Use peripheral disconnect/connect.");
-             return;
-        }
-
-        await this.beginSocketIO();
-        
-        const roomId = Cast.toString(args.ROOM_ID).trim();
-        
-        if (!this.username) {
-            console.error("M3D Whisper: Please set a username before joining a circle.");
-            return;
-        }
-
-        // We use the existing internal helper, ignoring the returned status object here since it's an async block command
-        await this._joinRoomInternal(roomId, this.username);
-    }
-
     async whisperMessage(args) {
         await this.beginSocketIO();
         
@@ -727,55 +639,15 @@ class M3DWhisper {
         });
     }
 
-    async leaveCircle() {
-        await this.beginSocketIO();
 
-        if (!this.roomId) {
-            console.warn("M3D Whisper: Not currently in a circle.");
-            return;
+    setUsername(args) {
+        this.username = Cast.toString(args.USERNAME).trim();
+        if (this.username) {
+            console.log(`M3D Whisper: Local username set to: ${this.username}`);
+        } else {
+            console.error("M3D Whisper: Username cannot be empty.");
         }
-
-        const roomIdToLeave = this.roomId;
-        const usernameToLeave = this.username;
-
-        // Clear local state first, which calls _setConnectionStatus(false)
-        this._clearRoomState(); 
-
-        return new Promise(resolve => {
-            this.socket.emit('leave_room', { roomId: roomIdToLeave, username: usernameToLeave }, (res) => {
-                console.log(`M3D Whisper: Left circle ${roomIdToLeave}.`);
-                // Server handles the response, just resolve
-                resolve();
-            });
-        });
     }
-    
-    async deleteCreatedCircle() {
-        await this.beginSocketIO();
-        
-        if (!this.roomId || !this.deleteCode) {
-            console.error("M3D Whisper: Cannot delete circle. You must be the creator, or you already left/deleted it.");
-            return;
-        }
-        
-        const roomIdToDelete = this.roomId;
-        const deleteCode = this.deleteCode;
-        
-        // Clear state before sending, as the server will broadcast room_destroyed
-        this._clearRoomState();
-
-        return new Promise(resolve => {
-            this.socket.emit('delete_room', { roomId: roomIdToDelete, deleteCode: deleteCode }, (res) => {
-                if (res.status === 'ok') {
-                    console.log(`M3D Whisper: Successfully deleted circle ${roomIdToDelete}.`);
-                } else {
-                    console.error(`M3D Whisper: Failed to delete circle: ${res.message}`);
-                }
-                resolve();
-            });
-        });
-    }
-
 
     // ------------------------------------------------------------------
     // BLOCK IMPLEMENTATION - REPORTERS
@@ -788,6 +660,25 @@ class M3DWhisper {
      */
     hasWhispers() {
         return this.messageQueue.length > 0;
+    }
+    /**
+     * Boolean block: Checks if the message queue is non-empty.
+     * Only counts user-to-user messages, excluding admin/server messages.
+     * @returns {boolean} True if there is at least one message waiting.
+     */
+    hasWhispersFrom(args) {
+        sender = Cast.toString(args.SENDER_USER).trim();
+
+        console.log(`M3D Whisper: Checking for whispered messages from: ${sender || '<any user>'}`);
+
+        // If there are no messages, return false
+        if (!this.messageQueue || this.messageQueue.length === 0) return false;
+
+        // If sender is empty, just check if there are any messages
+        if (!sender) {
+            return this.messageQueue.length > 0;
+        }
+        return this.messageQueue.some(msg => msg.from === sender);
     }
 
     /**
@@ -809,7 +700,7 @@ class M3DWhisper {
         // If `user` is empty, return the very first message (FIFO behavior).
         let index;
         if (!user) {
-            index = 0;
+            return '';
         } else {
             index = this.messageQueue.findIndex(msg => msg.from === user);
         }
