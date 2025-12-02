@@ -109,7 +109,7 @@ export default [
         collaborator: 'M3D',
         iconURL: whisperIconURL,
         insetIconURL: whisperInsetIconURL,
-        description: 'A chat engine for scratch projects over the internet',
+        description: 'Build together, talk together. Seamless chat for Scratch.',
         featured: true,
         disabled: false,
         bluetoothRequired: false,
