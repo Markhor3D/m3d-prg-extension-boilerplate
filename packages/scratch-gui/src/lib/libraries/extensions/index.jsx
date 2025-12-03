@@ -16,6 +16,11 @@ import whisperInsetIconURL from './whisper/extension-icon.png';
 import whisperSmallIcon from './whisper/whisper-small.png';
 
 
+
+import askaiIconURL from './askai/extension-background.png';
+import askaiInsetIconURL from './askai/extension-icon.png';
+import askaiSmallIcon from './askai/askai-small.png';
+
 import musicIconURL from './music/music.png';
 import musicInsetIconURL from './music/music-small.svg';
 
@@ -118,6 +123,22 @@ export default [
         useAutoScan: false,
         connectionIconURL: whisperSmallIcon,
         connectionSmallIconURL: whisperSmallIcon,
+        helpLink: 'https://community.markhor3d.com/c/design-measure-arts-lab/robotics-technology-math-coding/13'
+    },{
+        name: 'Ask AI',
+        extensionId: 'askai',
+        collaborator: 'M3D',
+        iconURL: askaiIconURL,
+        insetIconURL: askaiInsetIconURL,
+        description: 'Ask AI',
+        featured: true,
+        disabled: false,
+        bluetoothRequired: false,
+        internetConnectionRequired: true,
+        launchPeripheralConnectionFlow: false,
+        useAutoScan: false,
+        connectionIconURL: askaiSmallIcon,
+        connectionSmallIconURL: askaiSmallIcon,
         helpLink: 'https://community.markhor3d.com/c/design-measure-arts-lab/robotics-technology-math-coding/13'
     },
     {

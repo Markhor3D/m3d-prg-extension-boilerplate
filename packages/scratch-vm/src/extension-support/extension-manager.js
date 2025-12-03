@@ -30,7 +30,8 @@ const builtinExtensions = {
     poseBody: () => require('../extensions/scratch3_pose_body'),
     avatar: () => require('../extensions/scratch3_avatar'),
     goCore: () => require('../extensions/goCore'),
-    whisper: () => require('../extensions/whisper')
+    whisper: () => require('../extensions/whisper'),
+    askai: () => require('../extensions/askai')
 
 };
 
