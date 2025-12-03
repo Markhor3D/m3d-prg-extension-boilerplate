@@ -63,7 +63,7 @@ class M3DWhisper {
         runtime.on('PROJECT_START', this.startEmitted);
 
         // 4. Attempt initial connection (needed for Socket.IO setup)
-        this.beginSocketIO();
+        //this.beginSocketIO();
     }
     
     /**
@@ -347,6 +347,42 @@ class M3DWhisper {
                     },
                     disableMonitor: true
                 },
+                // ... existing blocks ...
+                '---',
+                {
+                    opcode: 'postToMailbox',
+                    blockType: BlockType.COMMAND,
+                    text: formatMessage({
+                        id: 'whisper.postToMailbox',
+                        default: 'post [MESSAGE] to [TOPIC]',
+                        description: 'Posts a message to a topic mailbox for other bots to read.'
+                    }),
+                    arguments: {
+                        MESSAGE: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'Hello from mailbox!'
+                        },
+                        TOPIC: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'global'
+                        }
+                    }
+                },
+                {
+                    opcode: 'readFromMailbox',
+                    blockType: BlockType.REPORTER,
+                    text: formatMessage({
+                        id: 'whisper.readFromMailbox',
+                        default: 'read [TOPIC]',
+                        description: 'Reads and removes a message from a topic mailbox. Returns number if possible, otherwise string.'
+                    }),
+                    arguments: {
+                        TOPIC: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'global'
+                        }
+                    }
+                }
             ],
 
             menus: {
@@ -519,14 +555,7 @@ class M3DWhisper {
                     await this.beginSocketIO();
                     const response = await this._createRoomInternal();
                     if (response.status === 'ok') {
-                        // Auto-copy room ID to clipboard
-                        this.copyToClipboard(this.roomId).then(success => {
-                            if (success) {
-                                alert(`✅ Circle Created! ID: ${this.roomId} (copied to clipboard).`);
-                            } else {
-                                alert(`✅ Circle Created! ID: ${this.roomId}`);
-                            }
-                        });
+                        alert(`✅ Circle Created! ID: ${this.roomId}`);
                         this.peripheralId = this.roomId; // Set peripheral ID
                         this._setConnectionStatus(true); // Update status
                         resolve();
@@ -785,7 +814,94 @@ class M3DWhisper {
         }
         return this.roomId;
     }
-    
+    // ------------------------------------------------------------------
+    // MAILBOX BLOCK IMPLEMENTATIONS
+    // ------------------------------------------------------------------
+    async postToMailbox(args) {
+        await this.beginSocketIO();
+        
+        if (!this.roomId) {
+            console.error("M3D Whisper: Not currently in a circle. Join or create one first.");
+            return;
+        }
+        
+        const message = Cast.toString(args.MESSAGE);
+        const topic = Cast.toString(args.TOPIC).trim();
+        
+        if (!topic) {
+            console.warn("M3D Whisper: Topic is empty. Cannot post to mailbox.");
+            return;
+        }
+        
+        // FIX: Send the raw message WITHOUT mailbox:topic: prefix
+        return new Promise(resolve => {
+            this.socket.emit('send_message', {
+                roomId: this.roomId,
+                toUser: topic,  // Just the topic name
+                msg: message    // Raw message, no prefix
+            }, (res) => {
+                if (res.status !== 'ok') {
+                    console.error(`M3D Whisper: Failed to post to mailbox "${topic}": ${res.message}`);
+                } else {
+                    console.log(`M3D Whisper: Posted to mailbox "${topic}": "${message}"`);
+                }
+                resolve();
+            });
+        });
+    }
+    async readFromMailbox(args) {
+        await this.beginSocketIO();
+        
+        if (!this.roomId) {
+            console.error("M3D Whisper: Not currently in a circle. Join or create one first.");
+            return '';
+        }
+        
+        const topic = Cast.toString(args.TOPIC).trim();
+        
+        if (!topic) {
+            console.warn("M3D Whisper: Topic is empty. Cannot read from mailbox.");
+            return '';
+        }
+        
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                console.error(`M3D Whisper: Timeout reading mailbox "${topic}"`);
+                resolve('');
+            }, 3000);
+            
+            console.log(`M3D Whisper: Reading from mailbox "${topic}"`);
+            
+            // CRITICAL: Pass the parameters as an OBJECT
+            this.socket.emit('read_mailbox', { 
+                mailboxName: topic  // Make sure this is exactly 'topic'
+            }, (res) => {
+                clearTimeout(timeout);
+                console.log(`M3D Whisper: Server response for mailbox "${topic}":`, res);
+                
+                if (res.status === 'ok') {
+                    if (res.message && res.message.message) {
+                        const messageContent = res.message.message;
+                        console.log(`M3D Whisper: Read from mailbox "${topic}": "${messageContent}"`);
+                        
+                        // Try to parse as number
+                        const asNumber = Number(messageContent);
+                        if (!isNaN(asNumber) && messageContent.trim() !== '' && messageContent !== '') {
+                            resolve(asNumber);
+                        } else {
+                            resolve(messageContent);
+                        }
+                    } else {
+                        console.log(`M3D Whisper: No message in mailbox "${topic}"`);
+                        resolve('');
+                    }
+                } else {
+                    console.error(`M3D Whisper: Error reading mailbox "${topic}": ${res.message || 'Unknown error'}`);
+                    resolve('');
+                }
+            });
+        });
+    }
 }
 
 module.exports = M3DWhisper;
