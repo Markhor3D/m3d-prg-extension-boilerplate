@@ -13,6 +13,7 @@ const formatMessage = require('format-message');
 
 // Global Socket.IO client library URL
 const SOCKET_IO_URL = "https://chat.markhor3d.com";
+const SocketLoginKey = "218a75af-c7a9-454b-9a01-252e29ba330a";
 const SOCKET_IO_CDN = "https://cdn.socket.io/4.7.2/socket.io.min.js";
 
 // Internal ID for the extension, used for registration
@@ -102,37 +103,51 @@ class M3DWhisper {
         }
     }
 
-
-    /**
-     * Connects to the ChatEngine server using Socket.IO.
-     * Loads the Socket.IO script if not already present.
-     */
     async beginSocketIO() {
+        await this.beginSocketIO_gen(SOCKET_IO_URL, SocketLoginKey);
+    }
+    /**
+     * Connects to the ChatEngine server using Socket.IO,
+     * including the necessary secret key for authentication.
+     * * @param {string} serverUrl - The deployment URL (e.g., 'https://chat.markhor3d.com').
+     * @param {string} secretKey - The user's valid secret key (e.g., 'user-uuid-1').
+     */
+    async beginSocketIO_gen(serverUrl, secretKey) {
+        // 1. Check for existing connection and required parameters
         if (this.socket && this.socket.connected) return;
+        if (!serverUrl || !secretKey) {
+            console.error("M3D Whisper: Cannot connect. Server URL and Secret Key are required.");
+            return;
+        }
 
         // Ensure socket.io client script is loaded
+        // Assuming SOCKET_IO_CDN is defined somewhere
         if (typeof io === 'undefined') {
             await loadScript(SOCKET_IO_CDN);
         }
 
-        // Initialize Socket.IO connection
-        this.socket = io(SOCKET_IO_URL, {
+        // 2. Initialize Socket.IO connection with the SECRET KEY in the query
+        this.socket = io(serverUrl, {
             autoConnect: true,
             reconnectionAttempts: 3,
+            extraHeaders: {
+                "x-secret-key": secretKey 
+            },
         });
 
         this.socket.on('connect', () => {
             console.log("M3D Whisper: Connected to ChatEngine server.");
         });
 
-        this.socket.on('disconnect', () => {
-            console.log("M3D Whisper: Disconnected from ChatEngine server.");
+        this.socket.on('disconnect', (reason) => {
+            console.log(`M3D Whisper: Disconnected from ChatEngine server. Reason: ${reason}`);
             // If the socket disconnects, clear room state and update status
             this._clearRoomState(); 
         });
 
         this.socket.on('connect_error', (err) => {
-            console.error("M3D Whisper: Connection Error: ", err);
+            // This will trigger if the server rejects the connection (e.g., due to an invalid secret key)
+            console.error("M3D Whisper: Connection Error (Authentication Failed?): ", err.message);
         });
 
         // Handle incoming messages from the server
@@ -140,11 +155,14 @@ class M3DWhisper {
             this._handleIncomingMessage(data);
         });
         
-        // 1. Handle user list changes (Join/Leave) -> AUTOMATICALLY UPDATE USER LIST
-        this.socket.on('user_list_changed', () => {
+        // NOTE: The 'user_list_changed' event is not implemented in the current server.js. 
+        // It is best practice to remove or comment out handlers for events the server doesn't emit.
+        // However, keeping the existing structure for future compatibility:
+        /* this.socket.on('user_list_changed', () => {
             console.log("M3D Whisper: User list change detected. Updating users...");
             this.updateUserList();
         });
+        */
 
         // Handle room destruction
         this.socket.on('room_destroyed', (data) => {
@@ -483,7 +501,7 @@ class M3DWhisper {
                 try {
                     await this.beginSocketIO();
                     const res = await this._joinRoomInternal(roomId, this.username);
-                    if (res.status === 'ok') {
+                    if (res.status === 'ok') {  
                         alert(`✅ Successfully joined circle ${this.roomId}.`);
                         this.peripheralId = this.roomId; // Set peripheral ID
                         this._setConnectionStatus(true); // Update status
@@ -501,7 +519,14 @@ class M3DWhisper {
                     await this.beginSocketIO();
                     const response = await this._createRoomInternal();
                     if (response.status === 'ok') {
-                        alert(`✅ Circle Created! ID: ${this.roomId}.`);
+                        // Auto-copy room ID to clipboard
+                        this.copyToClipboard(this.roomId).then(success => {
+                            if (success) {
+                                alert(`✅ Circle Created! ID: ${this.roomId} (copied to clipboard).`);
+                            } else {
+                                alert(`✅ Circle Created! ID: ${this.roomId}`);
+                            }
+                        });
                         this.peripheralId = this.roomId; // Set peripheral ID
                         this._setConnectionStatus(true); // Update status
                         resolve();
@@ -557,6 +582,42 @@ class M3DWhisper {
                 }
             });
         });
+    }
+    // Utility to copy text to clipboard
+    copyToClipboard(text) {
+        // Try using the modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text)
+                .then(() => {
+                    console.log(`M3D Whisper: Copied to clipboard: ${text}`);
+                    return true;
+                })
+                .catch(err => {
+                    console.error('M3D Whisper: Failed to copy to clipboard:', err);
+                    return false;
+                });
+        } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                console.log(`M3D Whisper: Copied to clipboard (fallback): ${text}`);
+                return successful;
+            } catch (err) {
+                console.error('M3D Whisper: Failed to copy to clipboard (fallback):', err);
+                document.body.removeChild(textArea);
+                return false;
+            }
+        }
     }
 
     // ------------------------------------------------------------------
@@ -718,6 +779,10 @@ class M3DWhisper {
     }
 
     getRoomID() {
+        if (this.roomId) {
+            // Copy to clipboard when block is executed
+            this.copyToClipboard(this.roomId);
+        }
         return this.roomId;
     }
     
