@@ -8,7 +8,7 @@ const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
 
 
-const EXTENSION_ID = 'geminiAI';
+const EXTENSION_ID = 'askai';
 
 class M3DGeminiAI {
     constructor(runtime) {
@@ -33,7 +33,7 @@ class M3DGeminiAI {
     getInfo() {
         return {
             id: EXTENSION_ID,
-            name: 'M3D Gemini AI',
+            name: 'M3D Ask AI',
             color1: '#FF6B6B', // Coral red
             color2: '#4ECDC4', // Turquoise
             menuIconURI: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyQzIgMTcuNTIgNi40OCAyMiAxMiAyMkMxNy41MiAyMiAyMiAxNy41MiAyMiAxMkMyMiA2LjQ4IDE3LjUyIDIgMTIgMlpNMTIgMjBDNy41OCAyMCA0IDE2LjQyIDQgMTJDNCA3LjU4IDcuNTggNCAxMiA0QzE2LjQyIDQgMjAgNy41OCAyMCAxMkMyMCAxNi40MiAxNi40MiAyMCAxMiAyMFoiIGZpbGw9IiNGRjZCNkIiLz4KPHBhdGggZD0iTTEyIDZMMTcgMTJMMTIgMThMNyAxMkwxMiA2WiIgZmlsbD0iIzRFQ0RDNCIvPgo8L3N2Zz4K',
