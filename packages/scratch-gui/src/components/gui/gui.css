@@ -3,11 +3,15 @@
 @import "../../css/z-index.css";
 
 .page-wrapper {
-    height: 100%;
+    /* Use viewport height to avoid depending on ancestor 100% heights */
+    height: 100vh;
+    min-height: 0;
 }
 
 .body-wrapper {
-    height: calc(100% - $menu-bar-height);
+    /* Calculate against the viewport to avoid accidental extra document height */
+    height: calc(100vh - $menu-bar-height);
+    min-height: 0;
     background-color: $ui-primary;
 }
 
@@ -24,7 +28,11 @@
         b) for combined stage menu + stage + sprite/stage selectors
     */
     flex-direction: row;
-    height: 100%;
+     /* Let the flex-wrapper size itself within the body wrapper without forcing
+         the document to grow. Ensuring min-height: 0 prevents flex children from
+         creating overflow in some browsers. */
+     height: 100%;
+     min-height: 0;
 
     /*
         Stop scrollbar popping in and out from scratch-blocks border issue
@@ -181,6 +189,16 @@
 .blocks-wrapper {
     flex-grow: 1;
     position: relative;
+}
+
+.chat-panel-wrapper {
+    width: 320px;
+    flex-shrink: 0;
+    background-color: $ui-secondary;
+    border-left: 1px solid $ui-black-transparent;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .stage-and-target-wrapper {

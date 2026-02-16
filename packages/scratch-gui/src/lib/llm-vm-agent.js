@@ -6,27 +6,69 @@ class LLMVMAgent {
     constructor(vm) {
         this.vm = vm;
         this.runtime = vm.runtime;
+        this.llmActionHistory = ""; // a rolling summary string of recent LLM-driven changes for context in future prompts
 
         // Run dummy tests after 2 seconds to confirm API is operational
         setTimeout(() => this._runDummyTests(), 5000);
     }
+compilePromptPayload() {
+        if (!this.vm || !this.vm.editingTarget) return {};
 
-    // --- PAYLOAD COMPILATION (VM -> LLM) ---
+        const target = this.vm.editingTarget;
+        
+        // 1. Extract Variables
+        const variables = Object.values(target.variables).map(v => ({
+            id: v.id,
+            name: v.name,
+            value: v.value,
+            type: v.type // '' for scalar, 'list' for arrays
+        }));
 
-    /**
-     * Compiles the ultimate payload to send to the Gemini API
-     * @returns {Object} The complete workspace context
-     */
-    compilePromptPayload() {
-        if (!this.vm || !this.runtime) return { error: "VM not initialized." };
+        // 2. Extract Rich Extension Block Metadata
+        const extensionBlocks = [];
+        
+        if (this.vm.runtime && this.vm.runtime._blockInfo) {
+            // Just use Object.values to get the extension info objects directly
+            const extensions = Object.values(this.vm.runtime._blockInfo);
+            
+            for (const extInfo of extensions) {
+                if (extInfo && Array.isArray(extInfo.blocks)) {
+                    // Grab the true extension ID directly from the info object (e.g., 'goCore')
+                    const actualExtId = extInfo.id; 
+                    
+                    for (const blockWrapper of extInfo.blocks) {
+                        const block = blockWrapper.info || blockWrapper; 
+                        
+                        if (block && block.opcode) {
+                            // Safely build the prefix
+                            const prefix = actualExtId ? `${actualExtId}_` : '';
+                            
+                            // Append the prefix if it isn't already there
+                            const fullOpcode = block.opcode.startsWith(prefix) 
+                                ? block.opcode 
+                                : `${prefix}${block.opcode}`;
+                                
+                            extensionBlocks.push({
+                                category: extInfo.name || actualExtId || 'Custom Extension',
+                                opcode: fullOpcode,
+                                text: block.text || '', 
+                                arguments: Object.keys(block.arguments || {})
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
-        const payload = {
-            activeTargetId: this.vm.editingTarget ? this.vm.editingTarget.id : null,
-            availableOpcodes: this.getAvailableOpcodes(),
-            targets: this.runtime.targets.map(target => this.getTargetData(target))
+        // 3. Package the Payload
+        return {
+            activeTargetId: target.id,
+            activeTargetName: target.getName(),
+            actionHistory: this.llmActionHistory, 
+            variables: variables,                 
+            availableExtensions: extensionBlocks, 
+            blocks: target.blocks._blocks         
         };
-
-        return payload;
     }
 
     /**
@@ -165,11 +207,17 @@ class LLMVMAgent {
     /**
      * Dispatcher for the LLM instruction set payload
      * @param {Array} instructionSet - Array of JSON operations requested by the LLM
+     *//**
+     * Dispatcher for the LLM instruction set payload
+     * @param {Array} instructionSet - Array of JSON operations requested by the LLM
      */
-    executeInstructions(instructionSet) {
+    async executeInstructions(instructionSet) {
         if (!this.vm || !this.vm.editingTarget) return false;
 
         for (const instruction of instructionSet) {
+            // Skip chat replies; the UI handles those
+            if (instruction.action === 'REPLY_IN_CHAT') continue;
+
             try {
                 switch (instruction.action) {
                     case 'INSERT_CHAIN':
@@ -181,16 +229,31 @@ class LLMVMAgent {
                     case 'MODIFY_INPUT':
                         this._modifyInput(instruction.payload);
                         break;
+                    // --- NEW CASES BELOW ---
+                    case 'CREATE_VARIABLE':
+                        this._createVariable(instruction.payload);
+                        break;
+                    case 'SET_VARIABLE_VALUE':
+                        this._setVariableValue(instruction.payload);
+                        break;
+                    case 'UPDATE_HISTORY':
+                        this._updateHistory(instruction.payload);
+                        break;
                     default:
                         console.warn(`Unknown LLM action: ${instruction.action}`);
                 }
+
+                // Force the GUI to re-render immediately after this single block is placed
+                this.vm.emitWorkspaceUpdate();
+                
+                // Wait 200ms before applying the next instruction to create an animation effect
+                await new Promise(resolve => setTimeout(resolve, 200));
+
             } catch (err) {
                 console.error(`Error executing LLM action [${instruction.action}]:`, err);
             }
         }
 
-        // Force the GUI to re-render after all operations are complete
-        this.vm.emitWorkspaceUpdate();
         return true;
     }
 
@@ -397,7 +460,42 @@ class LLMVMAgent {
             }
         }
     }
+    /**
+     * Creates a new Scratch variable for the current sprite
+     */
+    _createVariable(payload) {
+        if (!this.vm.editingTarget) return;
+        const id = payload.id || this._generateId();
+        const type = payload.type || ''; // '' is scalar, 'list' is list
+        
+        // Scratch VM method to create a variable
+        this.vm.editingTarget.createVariable(id, payload.name, type, false);
+        
+        // Optionally set an initial value
+        if (payload.value !== undefined) {
+            this.vm.editingTarget.variables[id].value = payload.value;
+        }
+    }
 
+    /**
+     * Hot-swaps the value of a variable directly in VM memory
+     */
+    _setVariableValue(payload) {
+        if (!this.vm.editingTarget) return;
+        const variable = this.vm.editingTarget.variables[payload.id];
+        if (variable) {
+            variable.value = payload.value;
+        }
+    }
+
+    /**
+     * Overwrites the agent's short-term memory with the newly compressed summary string
+     */
+    _updateHistory(payload) {
+        if (payload.summary !== undefined) {
+            this.llmActionHistory = payload.summary;
+        }
+    }
     // --- INITIALIZATION TESTS ---
 
     _runDummyTests() {

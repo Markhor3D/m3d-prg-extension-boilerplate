@@ -29,8 +29,8 @@ import TipsLibrary from '../../containers/tips-library.jsx';
 import Cards from '../../containers/cards.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
-import JugnuChat from '../jugnu-chat/jugnu-chat.jsx';
 import ConnectionModal from '../../containers/connection-modal.jsx';
+import JugnuChat from '../jugnu-chat/jugnu-chat.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
 import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
@@ -366,10 +366,12 @@ const GUIComponent = props => {
                                 />
                             </Box>
                         </Box>
+                        <Box className={styles.chatPanelWrapper}>
+                            <JugnuChat />
+                        </Box>
                     </Box>
                 </Box>
                 <DragLayer />
-                <JugnuChat />
             </Box>
         );
     }}</MediaQuery>);

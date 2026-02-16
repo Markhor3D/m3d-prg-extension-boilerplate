@@ -17,9 +17,16 @@ import styles from './index.css';
 // Register "base" page view
 analytics.pageview('/');
 
-const appTarget = document.createElement('div');
-appTarget.className = styles.app;
-document.body.appendChild(appTarget);
+// If an `.app` element already exists (e.g. from a previous render), reuse
+// it instead of creating a second one which can introduce empty page height
+// (the `.app` CSS sets a large `min-height`). This prevents duplicate
+// empty nodes like `index_app_3Qs6X` that cause scrolling space.
+let appTarget = document.querySelector(`.${styles.app}`);
+if (!appTarget) {
+    appTarget = document.createElement('div');
+    appTarget.className = styles.app;
+    document.body.appendChild(appTarget);
+}
 
 if (supportedBrowser()) {
     // require needed here to avoid importing unsupported browser-crashing code
