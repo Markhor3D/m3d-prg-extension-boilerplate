@@ -2,14 +2,14 @@
  * Scratch 3.0 extension for M3D Whisper ChatEngine.
  * Enables bot-to-bot and user-to-bot real-time messaging using Socket.IO.
  * * Required: Node.js server running the ChatEngine (server.js) on http://localhost:3000
- * * NOTE ON CONNECTION FLOW: The connection process below simulates the UI interaction
- * using browser alert/prompt/confirm because custom modals are not available in a standard
- * extension environment.
+ * * NOTE ON CONNECTION FLOW: The connection process uses custom Scratch-style modals
+ * for a consistent user experience.
  */
 const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const Cast = require('../../util/cast');
 const formatMessage = require('format-message');
+const { ScratchAlert, ScratchConfirm, ScratchPrompt } = require('../goCommon/scratch-modals');
 
 // Global Socket.IO client library URL
 const SOCKET_IO_URL = "https://chat.markhor3d.com";
@@ -497,7 +497,7 @@ class M3DWhisper {
 
     /**
      * Handles the interactive connection process (Create or Join).
-     * This is where the browser prompts/alerts start.
+     * This uses Scratch-style modals for user interaction.
      * @returns {Promise} A promise that resolves when connected or rejects on failure.
      */
     connect() {
@@ -507,28 +507,38 @@ class M3DWhisper {
 
             // 1. Check if already connected (Handling user's request for disconnect option)
             if (this.isConnected()) {
-                // Use confirm to give the user a choice to disconnect
-                const disconnectPrompt = confirm(`You are already connected to circle: ${this.roomId} as ${this.username}. Do you want to DISCONNECT now?`);
-                
-                if (disconnectPrompt) {
-                    await this.leaveCircle(); // Disconnects and updates state/status
-                    alert("Disconnected successfully. Please click Connect button again to join a new circle.");
-                    return resolve(); 
-                }
-                alert(`Staying connected to ${this.roomId}.`);
-                return resolve(); // Keep connected
+                ScratchConfirm(`You are already connected to circle: ${this.roomId} as ${this.username}. Do you want to DISCONNECT now?`, async (disconnectPrompt) => {
+                    if (disconnectPrompt) {
+                        await this.leaveCircle(); // Disconnects and updates state/status
+                        ScratchAlert("Disconnected successfully. Please click Connect button again to join a new circle.", () => resolve()); 
+                    } else {
+                        ScratchAlert(`Staying connected to ${this.roomId}.`, () => resolve()); // Keep connected
+                    }
+                });
+                return;
             }
 
             // 2. Get Username (If not already set by a block)
             if (!this.username) {
-                const newUsername = prompt("Enter your bot's unique name (e.g., bot-alpha):");
-                if (!newUsername) return reject(new Error("Username is required to connect."));
-                this.setUsername({ USERNAME: newUsername });
+                ScratchPrompt("Enter your bot's unique name (e.g., bot-alpha):", "", (newUsername) => {
+                    if (!newUsername) return reject(new Error("Username is required to connect."));
+                    this.setUsername({ USERNAME: newUsername });
+                    // Continue to room selection
+                    this._promptForRoom(resolve, reject);
+                });
+                return;
             }
             
             // 3. Choose Action (Create or Join)
-            const action = prompt(`Hello ${this.username}! If you already have a Circle ID, enter it or leave blank to CREATE a new circle.`);
-            
+            this._promptForRoom(resolve, reject);
+        });
+    }
+
+    /**
+     * Helper method: Prompt user to create or join a circle
+     */
+    _promptForRoom(resolve, reject) {
+        ScratchPrompt(`Hello ${this.username}! If you already have a Circle ID, enter it or leave blank to CREATE a new circle.`, "", async (action) => {
             if (action && action.toUpperCase() !== '') {
                 // B. JOIN ROOM
                 const roomId = action.toUpperCase();
@@ -538,34 +548,34 @@ class M3DWhisper {
                     await this.beginSocketIO();
                     const res = await this._joinRoomInternal(roomId, this.username);
                     if (res.status === 'ok') {  
-                        alert(`✅ Successfully joined circle ${this.roomId}.`);
-                        this.peripheralId = this.roomId; // Set peripheral ID
-                        this._setConnectionStatus(true); // Update status
-                        resolve();
+                        ScratchAlert(`✅ Successfully joined circle ${this.roomId}.`, () => {
+                            this.peripheralId = this.roomId; // Set peripheral ID
+                            this._setConnectionStatus(true); // Update status
+                            resolve();
+                        });
                     } else {
                         reject(new Error(`Failed to join circle ${roomId}: ${res.message}`));
                     }
                 } catch (e) {
                     reject(e);
                 }
-
             } else {
                 // A. CREATE ROOM
                 try {
                     await this.beginSocketIO();
                     const response = await this._createRoomInternal();
                     if (response.status === 'ok') {
-                        alert(`✅ Circle Created! ID: ${this.roomId}`);
-                        this.peripheralId = this.roomId; // Set peripheral ID
-                        this._setConnectionStatus(true); // Update status
-                        resolve();
+                        ScratchAlert(`✅ Circle Created! ID: ${this.roomId}`, () => {
+                            this.peripheralId = this.roomId; // Set peripheral ID
+                            this._setConnectionStatus(true); // Update status
+                            resolve();
+                        });
                     } else {
                         reject(new Error(`Failed to create circle: ${response.message}`));
                     }
                 } catch (e) {
                     reject(e);
                 }
-
             }
         });
     }

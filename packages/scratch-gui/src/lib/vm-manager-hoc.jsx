@@ -7,6 +7,7 @@ import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
+import LLMVMAgent from './llm-vm-agent';
 import {
     LoadingStates,
     getIsLoadingWithId,
@@ -34,6 +35,13 @@ const vmManagerHOC = function (WrappedComponent) {
                 this.props.vm.setCompatibilityMode(true);
                 this.props.vm.initialized = true;
                 this.props.vm.setLocale(this.props.locale, this.props.messages);
+                
+                // Initialize LLM VM Agent
+                this.llmAgent = new LLMVMAgent(this.props.vm);
+                window.llmAgent = this.llmAgent; // Expose globally for debugging
+                console.log('🚀 LLM VM Agent is UP!');
+                console.log('Agent initialized with state:', this.llmAgent.getState());
+                console.log('Available in window.llmAgent');
             }
             if (!this.props.isPlayerOnly && !this.props.isStarted) {
                 this.props.vm.start();
