@@ -210,6 +210,10 @@ class LLMVMAgent {
         // Allow the LLM to provide its own ID for linking, otherwise generate one
         const newBlockId = payload.id || this._generateId();
         
+        // Determine structure BEFORE creating the block
+        const isTopLevel = !payload.afterBlockId && !payload.insideInputOf;
+        const initialParent = payload.afterBlockId || (payload.insideInputOf ? payload.insideInputOf.blockId : null);
+
         // 1. Define the core parent block
         const parentBlock = {
             id: newBlockId,
@@ -217,8 +221,8 @@ class LLMVMAgent {
             inputs: {},
             fields: {},
             next: null, // Will be updated if inserting in the middle of a chain
-            topLevel: !payload.afterBlockId,
-            parent: payload.afterBlockId || null,
+            topLevel: isTopLevel,    // determined from payload nesting
+            parent: initialParent,   // set parent according to nesting
             shadow: false,
             x: payload.x || 150,
             y: payload.y || 150
@@ -405,53 +409,110 @@ class LLMVMAgent {
         console.log(JSON.stringify(promptPayload, null, 2));
         const mockLlmResponse = [
             {
-                // 1. The Hat Block (Root)
+                // 1. The Hat Block
+                action: 'INSERT_CHAIN',
+                payload: { id: 'hat', opcode: 'event_whenflagclicked', inputs: {}, x: 200, y: 150 }
+            },
+            {
+                // 2. The If/Else Block
+                action: 'INSERT_CHAIN',
+                payload: { id: 'ifelse', afterBlockId: 'hat', opcode: 'control_if_else', inputs: {} }
+            },
+            {
+                // 3. The Condition (1 > 0) -> Goes into CONDITION
                 action: 'INSERT_CHAIN',
                 payload: {
-                    id: 'llm_step_1',
-                    opcode: 'event_whenflagclicked',
-                    inputs: {},
-                    x: 200,
-                    y: 150
+                    id: 'condition',
+                    insideInputOf: { blockId: 'ifelse', inputName: 'CONDITION' },
+                    opcode: 'operator_gt',
+                    inputs: { OPERAND1: 1, OPERAND2: 0 }
                 }
             },
             {
-                // 2. Say "I'm ready!"
+                // 4. Repeat Loop -> Goes into SUBSTACK (The "If" branch)
                 action: 'INSERT_CHAIN',
                 payload: {
-                    id: 'llm_step_2',
-                    afterBlockId: 'llm_step_1', // Attach to the hat block
-                    opcode: 'looks_say',
-                    inputs: {
-                        MESSAGE: "I'm ready!"
-                    }
+                    id: 'repeat',
+                    insideInputOf: { blockId: 'ifelse', inputName: 'SUBSTACK' },
+                    opcode: 'control_repeat',
+                    inputs: { TIMES: 10 }
                 }
             },
             {
-                // 3. Delay for a bit (1 second)
+                // 5. Move 10 Steps -> Goes into SUBSTACK of the Repeat Loop
                 action: 'INSERT_CHAIN',
                 payload: {
-                    id: 'llm_step_3',
-                    afterBlockId: 'llm_step_2', // Attach to the say block
-                    opcode: 'control_wait',
-                    inputs: {
-                        DURATION: 1
-                    }
+                    id: 'move',
+                    insideInputOf: { blockId: 'repeat', inputName: 'SUBSTACK' },
+                    opcode: 'motion_movesteps',
+                    inputs: { STEPS: 10 }
                 }
             },
             {
-                // 4. Move up (Change Y by 10)
+                // 6. Say "Hello from M3D!" -> Attached below Move
+                action: 'INSERT_CHAIN',
+                payload: { id: 'say1', afterBlockId: 'move', opcode: 'looks_say', inputs: { MESSAGE: 'Hello from M3D!' } }
+            },
+            {
+                // 7. Wait 1 second -> Attached below Say
+                action: 'INSERT_CHAIN',
+                payload: { id: 'wait1', afterBlockId: 'say1', opcode: 'control_wait', inputs: { DURATION: 1 } }
+            },
+            {
+                // 8. Say "Done" -> Attached below Wait
+                action: 'INSERT_CHAIN',
+                payload: { id: 'say2', afterBlockId: 'wait1', opcode: 'looks_say', inputs: { MESSAGE: 'Done' } }
+            },
+            {
+                // 9. Wait 1 second -> Attached below second Say
+                action: 'INSERT_CHAIN',
+                payload: { id: 'wait2', afterBlockId: 'say2', opcode: 'control_wait', inputs: { DURATION: 1 } }
+            },
+            {
+                // 10. Play Sound -> Goes into SUBSTACK2 (The "Else" branch)
                 action: 'INSERT_CHAIN',
                 payload: {
-                    id: 'llm_step_4',
-                    afterBlockId: 'llm_step_3', // Attach to the wait block
-                    opcode: 'motion_changeyby',
-                    inputs: {
-                        DY: 10
-                    }
+                    id: 'sound',
+                    insideInputOf: { blockId: 'ifelse', inputName: 'SUBSTACK2' },
+                    opcode: 'sound_playuntildone',
+                    // Note: Scratch uses a special dropdown shadow for sound menus, 
+                    // but standard text injection works as a fallback in the VM!
+                    inputs: { SOUND_MENU: 'pop' } 
                 }
             }
         ];
+        // const mockLlmresponse = [
+        //     {
+        //         // 1. hat block
+        //         action: 'insert_chain',
+        //         payload: { id: 'hat', opcode: 'event_whenflagclicked', inputs: {}, x: 200, y: 150 }
+        //     },
+        //     {
+        //         // 2. forever loop
+        //         action: 'insert_chain',
+        //         payload: { id: 'forever', afterblockid: 'hat', opcode: 'control_forever', inputs: {} }
+        //     },
+        //     {
+        //         // 3. the "counter" (change x by 1) -> inside the forever loop
+        //         action: 'insert_chain',
+        //         payload: {
+        //             id: 'increment',
+        //             insideinputof: { blockid: 'forever', inputname: 'substack' },
+        //             opcode: 'motion_changexby',
+        //             inputs: { dx: 1 }
+        //         }
+        //     },
+        //     {
+        //         // 4. wait 1 second -> below the increment
+        //         action: 'insert_chain',
+        //         payload: {
+        //             id: 'wait',
+        //             afterblockid: 'increment',
+        //             opcode: 'control_wait',
+        //             inputs: { duration: 1 }
+        //         }
+        //     }
+        // ];
 
         console.log("-> Executing mock LLM instruction set...");
         this.executeInstructions(mockLlmResponse);
