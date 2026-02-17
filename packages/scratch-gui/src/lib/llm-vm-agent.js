@@ -263,58 +263,174 @@ compilePromptPayload() {
     _generateId() {
         return 'llm_' + Math.random().toString(36).substring(2, 11);
     }
+/**
+     * Dynamically builds the menu map by combining native Scratch menus
+     * with loaded custom M3D extension menus.
+     */
+    _getDynamicMenuMap() {
+        // 1. The hardcoded vanilla Scratch map
+        const menuMap = {
+            // --- MOTION ---
+            'motion_pointtowards': { 'TOWARDS': { type: 'shadow', shadowOpcode: 'motion_pointtowards_menu', fieldName: 'TOWARDS' } },
+            'motion_goto': { 'TO': { type: 'shadow', shadowOpcode: 'motion_goto_menu', fieldName: 'TO' } },
+            'motion_glideto': { 'TO': { type: 'shadow', shadowOpcode: 'motion_glideto_menu', fieldName: 'TO' } },
 
+            // --- LOOKS ---
+            'looks_switchcostumeto': { 'COSTUME': { type: 'shadow', shadowOpcode: 'looks_costume', fieldName: 'COSTUME' } },
+            'looks_switchbackdropto': { 'BACKDROP': { type: 'shadow', shadowOpcode: 'looks_backdrops', fieldName: 'BACKDROP' } },
+            'looks_changeeffectby': { 'EFFECT': { type: 'field' } },
+            'looks_seteffectto': { 'EFFECT': { type: 'field' } },
+            'looks_gotofrontback': { 'FRONT_BACK': { type: 'field' } },
+            'looks_goforwardbackwardlayers': { 'FORWARD_BACKWARD': { type: 'field' } },
+            'looks_costumenumbername': { 'NUMBER_NAME': { type: 'field' } },
+            'looks_backdropnumbername': { 'NUMBER_NAME': { type: 'field' } },
+
+            // --- SOUND ---
+            'sound_play': { 'SOUND_MENU': { type: 'shadow', shadowOpcode: 'sound_sounds_menu', fieldName: 'SOUND_MENU' } },
+            'sound_playuntildone': { 'SOUND_MENU': { type: 'shadow', shadowOpcode: 'sound_sounds_menu', fieldName: 'SOUND_MENU' } },
+            'sound_changeeffectby': { 'EFFECT': { type: 'field' } },
+            'sound_seteffectto': { 'EFFECT': { type: 'field' } },
+
+            // --- EVENTS ---
+            'event_whenkeypressed': { 'KEY_OPTION': { type: 'field' } },
+            'event_whenbackdropswitchesto': { 'BACKDROP': { type: 'field' } },
+            'event_whengreaterthan': { 'WHENGREATERTHANMENU': { type: 'field' } },
+            'event_broadcast': { 'BROADCAST_OPTION': { type: 'shadow', shadowOpcode: 'event_broadcast_menu', fieldName: 'BROADCAST_OPTION' } },
+            'event_broadcastandwait': { 'BROADCAST_OPTION': { type: 'shadow', shadowOpcode: 'event_broadcast_menu', fieldName: 'BROADCAST_OPTION' } },
+
+            // --- CONTROL ---
+            'control_create_clone_of': { 'CLONE_OPTION': { type: 'shadow', shadowOpcode: 'control_create_clone_of_menu', fieldName: 'CLONE_OPTION' } },
+            'control_stop': { 'STOP_OPTION': { type: 'field' } },
+
+            // --- SENSING ---
+            'sensing_touchingobject': { 'TOUCHINGOBJECTMENU': { type: 'shadow', shadowOpcode: 'sensing_touchingobjectmenu', fieldName: 'TOUCHINGOBJECTMENU' } },
+            'sensing_distanceto': { 'DISTANCETOMENU': { type: 'shadow', shadowOpcode: 'sensing_distancetomenu', fieldName: 'DISTANCETOMENU' } },
+            'sensing_keypressed': { 'KEY_OPTION': { type: 'shadow', shadowOpcode: 'sensing_keyoptions', fieldName: 'KEY_OPTION' } },
+            'sensing_of': { 
+                'PROPERTY': { type: 'field' }, 
+                'OBJECT': { type: 'shadow', shadowOpcode: 'sensing_of_object_menu', fieldName: 'OBJECT' } 
+            },
+
+            // --- OPERATORS ---
+            'operator_mathop': { 'OPERATOR': { type: 'field' } }
+        };
+
+        // 2. Dynamically append extension menus at runtime
+        if (this.vm && this.vm.runtime && this.vm.runtime._blockInfo) {
+            const extensions = Object.values(this.vm.runtime._blockInfo);
+            
+            for (const ext of extensions) {
+                if (ext && ext.menus && Array.isArray(ext.blocks)) {
+                    const extId = ext.id;
+
+                    for (const blockWrapper of ext.blocks) {
+                        const block = blockWrapper.info || blockWrapper;
+                        
+                        if (block.opcode && block.arguments) {
+                            const fullOpcode = block.opcode.startsWith(`${extId}_`) ? block.opcode : `${extId}_${block.opcode}`;
+                            
+                            // Check if any arguments require a menu
+                            for (const [argName, argData] of Object.entries(block.arguments)) {
+                                if (argData.menu) {
+                                    if (!menuMap[fullOpcode]) menuMap[fullOpcode] = {};
+                                    
+                                    // Based on your JSON, Scratch extension shadow blocks are formatted like: "extId_menu_menuName"
+                                    menuMap[fullOpcode][argName] = {
+                                        type: 'shadow',
+                                        shadowOpcode: `${extId}_menu_${argData.menu}`,
+                                        fieldName: argData.menu
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return menuMap;
+    }
     /**
      * Handles injecting a block. Automatically generates shadow inputs and heals pointers.
      * Payload shape: { opcode: "...", inputs: {"STEPS": 10}, afterBlockId: "xyz" }
      */
     _insertChain(payload) {
-        const blocks = this.vm.editingTarget.blocks;
-        // Allow the LLM to provide its own ID for linking, otherwise generate one
-        const newBlockId = payload.id || this._generateId();
-        
-        // Determine structure BEFORE creating the block
-        const isTopLevel = !payload.afterBlockId && !payload.insideInputOf;
-        const initialParent = payload.afterBlockId || (payload.insideInputOf ? payload.insideInputOf.blockId : null);
-
-        // 1. Define the core parent block
-        const parentBlock = {
-            id: newBlockId,
-            opcode: payload.opcode,
-            inputs: {},
-            fields: {},
-            next: null, // Will be updated if inserting in the middle of a chain
-            topLevel: isTopLevel,    // determined from payload nesting
-            parent: initialParent,   // set parent according to nesting
-            shadow: false,
-            x: payload.x || 150,
-            y: payload.y || 150
-        };
-        // Special-case: event_whenflagclicked is a hat block and should always be top-level
-        if (payload.opcode === 'event_whenflagclicked') {
-            parentBlock.topLevel = true;
-            parentBlock.parent = null;
-            // Ensure no inputs are required; hats typically have none
-            parentBlock.inputs = {};
-            parentBlock.fields = parentBlock.fields || {};
-            // Create the hat block and return early (don't attempt to splice under another block)
-            try {
-                blocks.createBlock(parentBlock);
-            } catch (e) {
-                console.error('Failed to create when-flag-clicked block:', e);
+        // --- HALLUCINATION CATCHES ---
+        if (payload.parent && payload.inputName && !payload.insideInputOf) {
+            payload.insideInputOf = { blockId: payload.parent, inputName: payload.inputName };
+        }
+        if (payload.blocks && Array.isArray(payload.blocks)) {
+            let previousId = null;
+            for (const b of payload.blocks) {
+                const subPayload = { ...b, x: payload.x || b.x, y: payload.y || b.y, afterBlockId: previousId || b.parent || null };
+                this._insertChain(subPayload);
+                previousId = b.id || b.blockId;
             }
             return;
         }
 
-        // 2. Auto-generate shadow blocks for inputs (so the LLM doesn't have to)
-        if (payload.inputs) {
-            for (const [inputName, inputValue] of Object.entries(payload.inputs)) {
+        if (!payload.opcode) return;
+
+        const blocks = this.vm.editingTarget.blocks;
+        const newBlockId = payload.id || payload.blockId || this._generateId();
+        const isTopLevel = !payload.afterBlockId && !payload.insideInputOf;
+        const initialParent = payload.afterBlockId || (payload.insideInputOf ? payload.insideInputOf.blockId : null);
+
+        const parentBlock = {
+            id: newBlockId,
+            opcode: payload.opcode,
+            inputs: {},
+            fields: {}, // We will populate this dynamically
+            next: null,
+            topLevel: isTopLevel,
+            parent: initialParent,
+            shadow: false,
+            x: payload.x || 150,
+            y: payload.y || 150
+        };
+
+        // --- THE UNIVERSAL MENU MAPPER ---
+        // This dictionary knows exactly how Scratch 3.0 handles every dropdown menu.
+        const SCRATCH_MENU_MAP = this._getDynamicMenuMap();
+
+        // Normalize inputs (move hallucinated fields back to inputs so we can process them)
+        payload.inputs = payload.inputs || {};
+        if (payload.fields) {
+            for (const [key, val] of Object.entries(payload.fields)) {
+                if (key !== 'VARIABLE' && key !== 'LIST') {
+                    payload.inputs[key] = val.value || val;
+                } else {
+                    parentBlock.fields[key] = val; // Preserve actual Scratch Variables
+                }
+            }
+        }
+
+        // Process all inputs through the Mapper
+        for (const [inputName, rawInputValue] of Object.entries(payload.inputs)) {
+            let inputValue = rawInputValue;
+            if (Array.isArray(inputValue)) inputValue = Array.isArray(inputValue[1]) ? inputValue[1][1] : (inputValue[1] || inputValue[0]);
+
+            const blockMapping = SCRATCH_MENU_MAP[payload.opcode];
+            const inputMapping = blockMapping ? blockMapping[inputName] : null;
+
+            // Scenario A: It's a native Field (like 'pitch' or 'loudness')
+            if (inputMapping && inputMapping.type === 'field') {
+                parentBlock.fields[inputName] = { name: inputName, value: String(inputValue) };
+            } 
+            // Scenario B: It requires a Shadow Block (Text, Number, or Menu)
+            else {
                 const shadowId = this._generateId();
-                
-                // Determine if it should be a math block or text block based on the value type
-                const isNum = !isNaN(inputValue);
-                const shadowOpcode = isNum ? 'math_number' : 'text';
-                const fieldName = isNum ? 'NUM' : 'TEXT';
+                let shadowOpcode, fieldName;
+
+                if (inputMapping && inputMapping.type === 'shadow') {
+                    shadowOpcode = inputMapping.shadowOpcode;
+                    fieldName = inputMapping.fieldName;
+                } else {
+                    // Fallback for standard text and numbers
+                    const isNum = !isNaN(inputValue) && inputValue !== "";
+                    shadowOpcode = isNum ? 'math_number' : 'text';
+                    fieldName = isNum ? 'NUM' : 'TEXT';
+                }
 
                 const shadowBlock = {
                     id: shadowId,
@@ -328,57 +444,28 @@ compilePromptPayload() {
                 };
                 
                 blocks.createBlock(shadowBlock);
-                
-                // Link the input to the shadow block
-                parentBlock.inputs[inputName] = {
-                    name: inputName,
-                    block: shadowId,
-                    shadow: shadowId
-                };
+                parentBlock.inputs[inputName] = { name: inputName, block: shadowId, shadow: shadowId };
             }
         }
 
-        // 3. Inject the primary block
         blocks.createBlock(parentBlock);
 
-        // 4. Splice it into the existing chain (Direct AST Mutation)
+        // Splice into chain
         if (payload.afterBlockId) {
             const targetBlock = blocks.getBlock(payload.afterBlockId);
             if (targetBlock) {
                 const oldNextId = targetBlock.next;
-                
-                // 1. Point the block above downwards to our new block
                 targetBlock.next = newBlockId;
-                
-                // 2. Point our new block upwards (already set, but strictly enforcing here)
                 parentBlock.parent = payload.afterBlockId;
-                
-                // 3. Point our new block downwards to the old next block
                 parentBlock.next = oldNextId;
-
-                // 4. Point the old next block upwards to our new block
-                if (oldNextId) {
-                    const oldNextBlock = blocks.getBlock(oldNextId);
-                    if (oldNextBlock) {
-                        oldNextBlock.parent = newBlockId;
-                    }
-                }
+                if (oldNextId) blocks.getBlock(oldNextId).parent = newBlockId;
             }
-        } 
-        // 5. Handle True Nesting (Injecting into a C-Block like 'repeat' or 'if')
-        else if (payload.insideInputOf) {
+        } else if (payload.insideInputOf) {
             const parentCBlock = blocks.getBlock(payload.insideInputOf.blockId);
-            const inputName = payload.insideInputOf.inputName; // e.g., 'SUBSTACK'
-
+            const inputName = payload.insideInputOf.inputName;
             if (parentCBlock) {
                 parentBlock.parent = parentCBlock.id;
-                
-                // Wire the C-Block's input to point to our new block as the start of the substack
-                parentCBlock.inputs[inputName] = {
-                    name: inputName,
-                    block: newBlockId,
-                    shadow: null
-                };
+                parentCBlock.inputs[inputName] = { name: inputName, block: newBlockId, shadow: null };
             }
         }
     }

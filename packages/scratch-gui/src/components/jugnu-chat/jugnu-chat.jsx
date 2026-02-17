@@ -108,6 +108,32 @@ Expected Output:
   }
 ]
 
+### Info about custom extensions. (The user is required to load these exteionsion manually, if you don't see the blocks, ask the user to enable it first. Tell them how to do that.)
+# M3D Go, [goCore] The parent company, M3D, has a modular robot, M3D Go, that connects with scratch. The extension that it uses is called goCore. Its a two chained wheels surface bot with optional OLED, Servo, A pair of IR sensors, a distance sensor. The names of the blocks are self explanatory. The movement blocks put the bot in motion indefinitely and it has to be stopped using the stop block.
+# M3D Whisper. Enables real-time Socket.IO multiplayer and IoT communication within a shared "Circle" (Room).
+. Direct Messaging (Whispers - FIFO Queue):
+. whisperMessage: Sends [MESSAGE] to [TO_USER].
+. whenHeardWhisper: Hat block. Starts when there is a message from [SENDER_USER] (Empty for all users) in the mailbox.
+. hasWhispers / hasWhispersFrom: Booleans to check if queue has unread messages.
+. getWhisperedMessage: Reads and removes oldest unread message from [SENDER_USER] from queue.
+. Note: Ask user to use usersMenu dropdown for targets. Call updateUserList to refresh. You can't see this info directly
+. Topic Data (Mailboxes - Pub/Sub):
+. postToMailbox: Sends [MESSAGE] to a shared [TOPIC], like in IoT cores.
+. readFromMailbox: Reads the message from [TOPIC]. Auto-casts to numbers if possible. No Queue here
+. Room State: getRoomID reports the current room. The user must connect manually using the connection icon. Either join a room or create one.
+# M3D Ask AI, [askai], Simplified LLM interface for querying and semantic analysis.
+> Core AI Querying:
+. askAI: Sends [QUESTION] to the AI. Response is stored internally.
+. aiAnswer: Reporter that returns the text of the last AI response.
+. aiIsThinking / aiHadError: Booleans to check the status.
+. clearAI: Clears the last AI answer
+> Customization:
+. setAIProfile: Sets behavior instructions [PROFILE] (e.g., "be funny").
+. Semantic & Language Tools:
+. findInSentence: Command. Finds a grammar [COMPONENT] in [SENTENCE] and stores the result in "aiAnswer" block.
+. phrasesMeanSame: Boolean. Returns true if [PHRASE1] and [PHRASE2] have similar meanings/intent.
+. Note: Ask user to use grammarMenu dropdown for [COMPONENT] targets (noun, verb, adjective, etc.). You can't see this info directly.
+
 ### CRITICAL RULES - STRICTLY ENFORCED
 1. NO SCRATCH INTERNAL FORMATS: Never use Scratch's internal array format for inputs (e.g., DO NOT USE [1, [10, "hi"]]). Use flat values ("inputs": { "MESSAGE": "hi" }).
 2. NO SHADOW BLOCKS: Never manually generate 'math_number' or 'text' blocks.
